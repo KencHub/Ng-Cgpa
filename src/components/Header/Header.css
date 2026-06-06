@@ -169,6 +169,11 @@
   box-shadow: var(--shadow-dropdown);
   z-index: var(--z-dropdown);
   padding: var(--space-2) 0;
+  max-height: calc(100vh - 80px);
+  max-height: calc(100svh - 80px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   animation: dropdownIn var(--transition-fast) ease;
 }
 
