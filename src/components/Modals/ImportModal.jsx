@@ -783,12 +783,15 @@ function MultiDiffReview({ multiDiff }) {
 
       {/* Overall summary */}
       <div className="import-preview__summary" style={{ marginBottom: "var(--space-4)" }}>
-        {totalNew > 0 && (
-          <span className="import-preview__badge import-preview__badge--good">
-            {totalNew} new
-          </span>
-        )}
-        {totalUpdated > 0 && (
+  <span style={{ fontSize: "13px", color: "var(--color-text-secondary)", marginRight: "var(--space-2)" }}>
+    {multiDiff.length} {multiDiff.length === 1 ? "semester" : "semesters"}
+  </span>
+  {totalNew > 0 && (
+    <span className="import-preview__badge import-preview__badge--good">
+      {totalNew} new
+    </span>
+  )}
+  {totalUpdated > 0 && (
           <span
             className="import-preview__badge"
             style={{
