@@ -300,7 +300,6 @@ export function useCGPA() {
   }, []);
 
   // setSemesterLabel is the public alias used by ImportModal after a file import.
-  // It calls renameSemester so the same trimming and 60-char cap apply.
   const setSemesterLabel = renameSemester;
 
   const toggleSemesterCollapse = useCallback((semesterId) => {
@@ -370,6 +369,10 @@ export function useCGPA() {
     [activeGradeTable]
   );
 
+  // ── importCoursesToSemester ───────────────────────────────────────────────
+  // Plain append. Used when the target semester is newly created (no existing
+  // courses) or when the caller already knows there are no duplicates.
+
   const importCoursesToSemester = useCallback(
     (semesterId, courses) => {
       const resolved = courses.map((c) => resolveCourse(c, activeGradeTable));
@@ -379,6 +382,49 @@ export function useCGPA() {
             ? { ...s, courses: [...s.courses, ...resolved] }
             : s
         )
+      );
+    },
+    [activeGradeTable]
+  );
+
+  // ── mergeImportCourses ────────────────────────────────────────────────────
+  // Smart merge using a diff result produced by computeImportDiff().
+  //
+  //   updated    — existing courses whose grade or CU changed.
+  //                The existing course ID is preserved; data is replaced.
+  //   added      — new courses not present in the semester. Appended.
+  //   duplicates — identical courses. Silently skipped (not re-appended).
+  //
+  // Called by ImportModal after the user confirms the diff review.
+
+  const mergeImportCourses = useCallback(
+    (semesterId, diffResult) => {
+      const { added, updated } = diffResult;
+
+      setSemesters((prev) =>
+        prev.map((s) => {
+          if (s.id !== semesterId) return s;
+
+          // Build lookup: existing course ID → incoming data
+          const updateMap = new Map(
+            updated.map((u) => [u.existing.id, u.incoming])
+          );
+
+          // Replace updated courses in-place, preserving their IDs
+          let courses = s.courses.map((c) => {
+            if (!updateMap.has(c.id)) return c;
+            const incoming = updateMap.get(c.id);
+            return resolveCourse({ ...incoming, id: c.id }, activeGradeTable);
+          });
+
+          // Append genuinely new courses
+          const resolvedAdded = added.map((c) =>
+            resolveCourse(c, activeGradeTable)
+          );
+          courses = [...courses, ...resolvedAdded];
+
+          return { ...s, courses };
+        })
       );
     },
     [activeGradeTable]
@@ -445,10 +491,7 @@ export function useCGPA() {
       let inst = getInstitutionById(saved.institutionId);
 
       if (!inst && saved.customInstitution) {
-        inst = {
-          ...saved.customInstitution,
-          status: "active",
-        };
+        inst = { ...saved.customInstitution, status: "active" };
       }
 
       if (inst) setInstitutionState(inst);
@@ -524,13 +567,14 @@ export function useCGPA() {
     addSemester,
     removeSemester,
     renameSemester,
-    setSemesterLabel,       // alias of renameSemester, used by ImportModal
+    setSemesterLabel,
     toggleSemesterCollapse,
     setActiveTab,
     addCourse,
     removeCourse,
     updateCourse,
     importCoursesToSemester,
+    mergeImportCourses,         // NEW — smart merge with diff result
     clearSemester,
     setProjection,
     dismissSuggestion,

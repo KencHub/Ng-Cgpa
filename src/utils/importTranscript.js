@@ -29,9 +29,7 @@ async function getXLSX() {
     _xlsx = await import("xlsx");
     return _xlsx;
   } catch {
-    throw new Error(
-      "xlsx package not found. Run: npm install xlsx"
-    );
+    throw new Error("xlsx package not found. Run: npm install xlsx");
   }
 }
 
@@ -45,9 +43,7 @@ async function getPDFLib() {
     ).href;
     return _pdfjs;
   } catch {
-    throw new Error(
-      "pdfjs-dist package not found. Run: npm install pdfjs-dist"
-    );
+    throw new Error("pdfjs-dist package not found. Run: npm install pdfjs-dist");
   }
 }
 
@@ -141,7 +137,7 @@ function groupItemsIntoRows(items, threshold = 10) {
     .map(([, cells]) =>
       cells
         .sort((a, b) => a.x - b.x)
-        .map(c => c.text)
+        .map((c) => c.text)
         .join(" ")
     );
 }
@@ -180,7 +176,7 @@ function parsePDFRowsIntoSemesters(rows, gradeTable, generateId, skipped) {
     }
   }
 
-  return semesters.filter(s => s.courses.length > 0);
+  return semesters.filter((s) => s.courses.length > 0);
 }
 
 
@@ -191,24 +187,20 @@ function parseSheetForSemesters(rows, gradeTable, generateId, sheetName, skipped
 
   if (!headerInfo) {
     skipped.push({
-      text: sheetName,
-      reason:
-        "Could not detect column headers. Expected columns like: " +
-        "Course Code, Credit Units, Grade.",
+      text:   sheetName,
+      reason: "Could not detect column headers. Expected columns like: Course Code, Credit Units, Grade.",
     });
     return [];
   }
 
-
-  
-const { headerIndex, colMap } = headerInfo;
+  const { headerIndex, colMap } = headerInfo;
   const semesters = [];
   let current     = null;
 
   // Scan rows above the column header for a semester label
   let preSemLabel = null;
   for (let i = 0; i < headerIndex; i++) {
-    const flat    = rows[i].map(c => String(c).trim());
+    const flat    = rows[i].map((c) => String(c).trim());
     const rowText = flat.join(" ").trim();
     const label   = detectSemesterLabel(rowText);
     if (label) preSemLabel = label;
@@ -220,7 +212,7 @@ const { headerIndex, colMap } = headerInfo;
 
   for (let i = headerIndex + 1; i < rows.length; i++) {
     const row     = rows[i];
-    const flat    = row.map(c => String(c).trim());
+    const flat    = row.map((c) => String(c).trim());
     const rowText = flat.join(" ").trim();
 
     if (!rowText) continue;
@@ -250,7 +242,7 @@ const { headerIndex, colMap } = headerInfo;
     }
   }
 
-  return semesters.filter(s => s.courses.length > 0);
+  return semesters.filter((s) => s.courses.length > 0);
 }
 
 
@@ -258,7 +250,7 @@ const { headerIndex, colMap } = headerInfo;
 
 function findHeaderRow(rows) {
   for (let i = 0; i < Math.min(rows.length, 20); i++) {
-    const normalized = rows[i].map(c => String(c).toLowerCase().trim());
+    const normalized = rows[i].map((c) => String(c).toLowerCase().trim());
     const colMap     = mapHeaderColumns(normalized);
     if (colMap) return { headerIndex: i, colMap };
   }
@@ -309,6 +301,8 @@ function mapHeaderColumns(row) {
 
 
 // ── Excel: Course Row Extraction ──────────────────────────────────────────────
+// CHANGED: cu > 8 (was cu > 6) — some technology and professional courses
+// carry 7–8 credit units.
 
 function extractCourseFromRow(flat, colMap, gradeTable, generateId) {
   const rawCode  = flat[colMap.code]  ?? "";
@@ -320,8 +314,8 @@ function extractCourseFromRow(flat, colMap, gradeTable, generateId) {
   if (!name) return { valid: false, reason: null };
 
   const cu = parseInt(rawCU, 10);
-  if (isNaN(cu) || cu < 0 || cu > 6) {
-    return { valid: false, reason: `Invalid credit units: "${rawCU}".` };
+  if (isNaN(cu) || cu < 0 || cu > 8) {
+    return { valid: false, reason: `Invalid credit units: "${rawCU}". Must be 0–8.` };
   }
 
   const thirdField = rawGrade.trim() || rawScore.trim();
@@ -334,7 +328,6 @@ function extractCourseFromRow(flat, colMap, gradeTable, generateId) {
 
 
 // ── PDF: Course Row Extraction ────────────────────────────────────────────────
-// CHANGED: n >= 0 and m >= 0 throughout to correctly handle 0-credit courses.
 
 const COURSE_CODE_RE = /([A-Z]{2,7})\s*(\d{3}[A-Z]?)\b/;
 
@@ -370,7 +363,6 @@ function parsePDFCourseRow(rowText, gradeTable, generateId) {
     for (let i = 0; i < tokens.length; i++) {
       if (!/^[A-Ha-h]$/.test(tokens[i])) continue;
 
-      // Search backward for CU (up to 4 positions back)
       for (let j = i - 1; j >= Math.max(0, i - 4); j--) {
         const n = parseInt(tokens[j], 10);
         if (!isNaN(n) && n >= 0 && n <= 9 && String(n) === tokens[j]) {
@@ -381,7 +373,6 @@ function parsePDFCourseRow(rowText, gradeTable, generateId) {
       }
       if (cu !== null) break;
 
-      // Search forward for CU (up to 4 positions ahead)
       for (let j = i + 1; j <= Math.min(tokens.length - 1, i + 4); j++) {
         const n = parseInt(tokens[j], 10);
         if (!isNaN(n) && n >= 0 && n <= 9 && String(n) === tokens[j]) {
@@ -394,21 +385,19 @@ function parsePDFCourseRow(rowText, gradeTable, generateId) {
     }
   }
 
-  // ── Pass 3: score-based transcript (no grade letter, score 10-100) ────────
+  // ── Pass 3: score-based transcript (no grade letter, score 10–100) ────────
   if (!grade) {
     for (let i = 0; i < tokens.length; i++) {
       const n = parseInt(tokens[i], 10);
       if (isNaN(n) || n <= 9 || n > 100 || String(n) !== tokens[i]) continue;
       score = n;
 
-      // Look for CU before the score
       for (let j = i - 1; j >= Math.max(0, i - 3); j--) {
         const m = parseInt(tokens[j], 10);
         if (!isNaN(m) && m >= 0 && m <= 9 && String(m) === tokens[j]) {
           cu = m; break;
         }
       }
-      // Or CU after the score
       if (cu === null) {
         for (let j = i + 1; j <= Math.min(tokens.length - 1, i + 3); j++) {
           const m = parseInt(tokens[j], 10);
@@ -439,12 +428,12 @@ function resolveAndBuild(name, cu, thirdField, gradeTable, generateId) {
   if (!isNaN(trimmed) && trimmed !== "") {
     const score = Math.round(parseFloat(trimmed));
     if (score < 0 || score > 100) {
-      return { valid: false, reason: `Score ${score} is out of range (0-100).` };
+      return { valid: false, reason: `Score ${score} is out of range (0–100).` };
     }
     const entry = resolveGradeFromScore(score, gradeTable);
     if (!entry) {
       return {
-        valid: false,
+        valid:  false,
         reason: `Score ${score} could not be mapped with the current grade table.`,
       };
     }
@@ -459,12 +448,12 @@ function resolveAndBuild(name, cu, thirdField, gradeTable, generateId) {
   }
 
   const letter = trimmed.toUpperCase();
-  const entry  = gradeTable.find(g => g.letter.toUpperCase() === letter);
+  const entry  = gradeTable.find((g) => g.letter.toUpperCase() === letter);
 
   if (!entry) {
-    const valid = gradeTable.map(g => g.letter).join(", ");
+    const valid = gradeTable.map((g) => g.letter).join(", ");
     return {
-      valid: false,
+      valid:  false,
       reason: `"${letter}" is not a valid grade. Valid grades: ${valid}.`,
     };
   }

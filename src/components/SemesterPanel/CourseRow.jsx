@@ -6,6 +6,11 @@
 // so it is never clipped by any parent overflow:hidden.
 //
 // Styles live in SemesterPanel.css.
+//
+// CHANGED: credit unit maximum raised from 6 to 8.
+// Some technology and professional courses at Nigerian universities carry
+// 7 or 8 credit units. Validation, error messages, and the input max
+// attribute all reflect this.
 
 import React, { useState, useEffect, useRef, useId } from "react";
 import ReactDOM from "react-dom";
@@ -174,6 +179,7 @@ const CourseRow = React.forwardRef(function CourseRow(
 
 
   // ── Credit units ───────────────────────────────────────────────────────────
+  // Maximum is 8. Some technology and professional programmes carry 7–8 units.
 
   function handleCUChange(e) {
     const raw = e.target.value;
@@ -185,7 +191,7 @@ const CourseRow = React.forwardRef(function CourseRow(
     const n = parseInt(raw, 10);
     if (!isNaN(n)) {
       onUpdate(course.id, { creditUnits: n });
-      if (n >= 0 && n <= 6) setCUError("");
+      if (n >= 0 && n <= 8) setCUError("");
     }
   }
 
@@ -195,10 +201,10 @@ const CourseRow = React.forwardRef(function CourseRow(
       course.creditUnits === "" ||
       isNaN(n) ||
       n < 0 ||
-      n > 6 ||
+      n > 8 ||
       !Number.isInteger(n)
     ) {
-      setCUError("0 to 6");
+      setCUError("0 to 8");
     } else {
       setCUError("");
     }
@@ -314,7 +320,7 @@ const CourseRow = React.forwardRef(function CourseRow(
       aria-rowindex={rowIndex + 2}
     >
 
-      {/* ── Course name + NC badge (inline, never inside CU cell) ─────────── */}
+      {/* ── Course name + NC badge ────────────────────────────────────────── */}
       <div className="course-row__cell course-row__cell--name" role="cell">
         <div className="course-name-wrap">
           <input
@@ -357,8 +363,8 @@ const CourseRow = React.forwardRef(function CourseRow(
                 0 credit units. This course is recorded and graded but does
                 not affect your GPA or CGPA.
                 {schoolName
-  ? ` Common for general studies courses at ${schoolName}.`
-  : " Common for general studies courses."}
+                  ? ` Common for general studies courses at ${schoolName}.`
+                  : " Common for general studies courses."}
               </InfoPopover>
             </>
           )}
@@ -376,7 +382,7 @@ const CourseRow = React.forwardRef(function CourseRow(
       </div>
 
 
-      {/* ── Credit units — plain input, NC badge no longer here ───────────── */}
+      {/* ── Credit units ─────────────────────────────────────────────────── */}
       <div className="course-row__cell course-row__cell--cu" role="cell">
         <div className="cu-input-wrap">
           <input
@@ -392,7 +398,7 @@ const CourseRow = React.forwardRef(function CourseRow(
             onChange={handleCUChange}
             onBlur={handleCUBlur}
             min={0}
-            max={6}
+            max={8}
             step={1}
             placeholder="—"
             aria-label={`Credit units, row ${rowIndex + 1}`}
@@ -554,48 +560,21 @@ export default CourseRow;
 
 function IconTrash() {
   return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 14 14"
-      fill="none"
-      aria-hidden="true"
-      focusable="false"
-    >
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true" focusable="false">
       <path
         d="M2 3.5h10M5.5 3.5V2.5a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 .5.5v1M3.5 3.5l.6 7.5a1 1 0 0 0 1 .9h3.8a1 1 0 0 0 1-.9l.6-7.5"
-        stroke="currentColor"
-        strokeWidth="1.3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
+        stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"
       />
-      <path
-        d="M5.5 6.5v3M8.5 6.5v3"
-        stroke="currentColor"
-        strokeWidth="1.3"
-        strokeLinecap="round"
-      />
+      <path d="M5.5 6.5v3M8.5 6.5v3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
     </svg>
   );
 }
 
 function IconInfo() {
   return (
-    <svg
-      width="8"
-      height="8"
-      viewBox="0 0 10 10"
-      fill="none"
-      aria-hidden="true"
-      focusable="false"
-    >
+    <svg width="8" height="8" viewBox="0 0 10 10" fill="none" aria-hidden="true" focusable="false">
       <circle cx="5" cy="5" r="4.25" stroke="currentColor" strokeWidth="1.3" />
-      <path
-        d="M5 4.5v3"
-        stroke="currentColor"
-        strokeWidth="1.3"
-        strokeLinecap="round"
-      />
+      <path d="M5 4.5v3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
       <circle cx="5" cy="3" r="0.6" fill="currentColor" />
     </svg>
   );

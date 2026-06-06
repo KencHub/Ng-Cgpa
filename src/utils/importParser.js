@@ -9,7 +9,8 @@
 // Each line is evaluated independently.
 //
 // Credit units of 0 are accepted for non-contributing courses (e.g. GST115).
-// These courses are recorded but excluded from all GPA and CGPA calculations.
+// Credit units up to 8 are accepted (some technology/professional courses carry
+// 7–8 units). Values above 8 are rejected.
 //
 // Returns a structured result object with valid courses and a skip report.
 
@@ -32,25 +33,21 @@ export function parseImportText(rawText, gradeTable, generateId) {
   const skipped = [];
 
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
+    const line       = lines[i];
     const lineNumber = i + 1;
-    const result = parseLine(line, gradeTable, generateId);
+    const result     = parseLine(line, gradeTable, generateId);
 
     if (result.valid) {
       courses.push(result.course);
     } else {
-      skipped.push({
-        line,
-        lineNumber,
-        reason: result.reason,
-      });
+      skipped.push({ line, lineNumber, reason: result.reason });
     }
   }
 
   return {
     courses,
     skipped,
-    total: lines.length,
+    total:    lines.length,
     imported: courses.length,
   };
 }
@@ -66,7 +63,7 @@ function parseLine(line, gradeTable, generateId) {
 
   if (parts.length < 3) {
     return {
-      valid: false,
+      valid:  false,
       reason: `Expected 3 fields (name, credit units, score or grade) but found ${parts.length}.`,
     };
   }
@@ -82,18 +79,19 @@ function parseLine(line, gradeTable, generateId) {
   }
   if (name.length > 50) {
     return {
-      valid: false,
+      valid:  false,
       reason: `Course name "${name.slice(0, 20)}..." exceeds 50 characters.`,
     };
   }
 
   // ── Credit units ──────────────────────────────────────────────────────────
   // 0 is valid for non-contributing courses (e.g. GST115 at UNIZIK).
+  // Maximum is 8 — some technology and professional courses carry 7–8 units.
   const cu = parseInt(rawCU, 10);
-  if (isNaN(cu) || cu < 0 || cu > 6 || !Number.isInteger(cu)) {
+  if (isNaN(cu) || cu < 0 || cu > 8 || !Number.isInteger(cu)) {
     return {
-      valid: false,
-      reason: `Credit units "${rawCU}" is invalid. Must be a whole number between 0 and 6. Use 0 only for non-contributing courses (e.g. GST115).`,
+      valid:  false,
+      reason: `Credit units "${rawCU}" is invalid. Must be a whole number between 0 and 8. Use 0 only for non-contributing courses (e.g. GST115).`,
     };
   }
 
@@ -102,7 +100,7 @@ function parseLine(line, gradeTable, generateId) {
 
   if (inputType === "invalid") {
     return {
-      valid: false,
+      valid:  false,
       reason: `"${rawThird}" is not a recognised score (0–100) or grade letter.`,
     };
   }
@@ -112,7 +110,7 @@ function parseLine(line, gradeTable, generateId) {
 
     if (isNaN(score) || score < 0 || score > 100) {
       return {
-        valid: false,
+        valid:  false,
         reason: `Score "${rawThird}" is out of range. Must be between 0 and 100.`,
       };
     }
@@ -120,37 +118,34 @@ function parseLine(line, gradeTable, generateId) {
     const gradeEntry = resolveGradeFromScore(score, gradeTable);
     if (!gradeEntry) {
       return {
-        valid: false,
+        valid:  false,
         reason: `Score ${score} could not be mapped to a grade with the selected institution's grading table.`,
       };
     }
 
     return {
-      valid: true,
+      valid:  true,
       course: buildCourse({
-        id: generateId(),
+        id:           generateId(),
         name,
-        creditUnits: cu,
+        creditUnits:  cu,
         score,
-        grade: gradeEntry.letter,
-        gradePoint: gradeEntry.point,
+        grade:        gradeEntry.letter,
+        gradePoint:   gradeEntry.point,
         qualityPoint: cu === 0 ? 0 : cu * gradeEntry.point,
-        status: cu === 0 ? "non_contributing" : gradeEntry.point === 0 ? "failed" : "passed",
+        status:       cu === 0 ? "non_contributing" : gradeEntry.point === 0 ? "failed" : "passed",
       }),
     };
   }
 
   if (inputType === "grade") {
-    const letter = rawThird.trim().toUpperCase();
-
-    const gradeEntry = gradeTable.find(
-      (g) => g.letter.toUpperCase() === letter
-    );
+    const letter     = rawThird.trim().toUpperCase();
+    const gradeEntry = gradeTable.find((g) => g.letter.toUpperCase() === letter);
 
     if (!gradeEntry) {
       const validLetters = gradeTable.map((g) => g.letter).join(", ");
       return {
-        valid: false,
+        valid:  false,
         reason: `"${letter}" is not a valid grade letter for the selected institution. Valid grades: ${validLetters}.`,
       };
     }
@@ -158,16 +153,16 @@ function parseLine(line, gradeTable, generateId) {
     const score = gradeEntry.min;
 
     return {
-      valid: true,
+      valid:  true,
       course: buildCourse({
-        id: generateId(),
+        id:           generateId(),
         name,
-        creditUnits: cu,
+        creditUnits:  cu,
         score,
-        grade: gradeEntry.letter,
-        gradePoint: gradeEntry.point,
+        grade:        gradeEntry.letter,
+        gradePoint:   gradeEntry.point,
         qualityPoint: cu === 0 ? 0 : cu * gradeEntry.point,
-        status: cu === 0 ? "non_contributing" : gradeEntry.point === 0 ? "failed" : "passed",
+        status:       cu === 0 ? "non_contributing" : gradeEntry.point === 0 ? "failed" : "passed",
       }),
     };
   }
@@ -182,11 +177,8 @@ export function detectInputType(value) {
   if (!value || typeof value !== "string") return "invalid";
   const trimmed = value.trim();
   if (trimmed === "") return "invalid";
-
   if (!isNaN(trimmed) && trimmed !== "") return "score";
-
   if (/^[A-Ha-h]{1,2}$/.test(trimmed)) return "grade";
-
   return "invalid";
 }
 
@@ -220,7 +212,7 @@ export function buildImportSummary(result) {
 }
 
 
-// ── Format Guide ─────────────────────────────────────────────────────────────
+// ── Format Guide ──────────────────────────────────────────────────────────────
 
 export function getFormatGuide(gradeTable) {
   const validGrades = Array.isArray(gradeTable)
@@ -234,10 +226,101 @@ export function getFormatGuide(gradeTable) {
     `Grade format:   CourseName, CreditUnits, Grade\n` +
     `                Example: MTH101, 3, A\n\n` +
     `Valid grades for your institution: ${validGrades}\n` +
-    `Credit units must be a whole number between 0 and 6. Use 0 for courses with no credit weight (they are recorded but excluded from all calculations).\n` +
+    `Credit units must be a whole number between 0 and 8. Use 0 for courses with no ` +
+    `credit weight (they are recorded but excluded from all calculations).\n` +
     `Score must be between 0 and 100.\n` +
     `Both formats can be mixed in the same import.`
   );
+}
+
+
+// ── Duplicate / Update Diff Engine ────────────────────────────────────────────
+//
+// computeImportDiff compares an array of incoming courses against the
+// courses already present in the target semester. Matching is by course name
+// (case-insensitive, trimmed). Grade and credit units determine identity:
+//
+//   added      — incoming course name does not exist in the semester.
+//   updated    — same name exists, but grade or CU differs.
+//   duplicates — same name, same grade, same CU — already identical.
+//
+// Score differences alone (when grade + CU are the same) do not trigger an
+// update because score doesn't affect quality points independently of grade.
+//
+// Returns: { added: Course[], updated: {existing,incoming}[], duplicates: {existing,incoming}[] }
+
+export function computeImportDiff(existingCourses, incomingCourses) {
+  const added      = [];
+  const updated    = [];
+  const duplicates = [];
+
+  for (const incoming of incomingCourses) {
+    const key      = incoming.name.trim().toLowerCase();
+    const existing = existingCourses.find(
+      (c) => c.name.trim().toLowerCase() === key
+    );
+
+    if (!existing) {
+      added.push(incoming);
+      continue;
+    }
+
+    const sameGrade = (existing.grade ?? null) === (incoming.grade ?? null);
+    const sameCU    = Number(existing.creditUnits) === Number(incoming.creditUnits);
+
+    if (sameGrade && sameCU) {
+      duplicates.push({ existing, incoming });
+    } else {
+      updated.push({ existing, incoming });
+    }
+  }
+
+  return { added, updated, duplicates };
+}
+
+
+// ── Multi-Semester Diff ───────────────────────────────────────────────────────
+//
+// Used when importing an entire transcript (multiple semester blocks).
+// Matches incoming semesters against existing ones by label (case-insensitive).
+//
+// Each entry in the returned array:
+// {
+//   label:           string,
+//   existingSemId:   string | null,  — null when the semester is new
+//   isNew:           boolean,
+//   incomingCourses: Course[],
+//   diff:            { added, updated, duplicates },
+// }
+
+export function computeMultiSemesterDiff(existingSemesters, incomingSemesters) {
+  return incomingSemesters.map((incomingSem) => {
+    const matchingSem = existingSemesters.find(
+      (s) => s.label.trim().toLowerCase() === incomingSem.label.trim().toLowerCase()
+    );
+
+    if (!matchingSem) {
+      return {
+        label:           incomingSem.label,
+        existingSemId:   null,
+        isNew:           true,
+        incomingCourses: incomingSem.courses,
+        diff: {
+          added:      incomingSem.courses,
+          updated:    [],
+          duplicates: [],
+        },
+      };
+    }
+
+    return {
+      label:           incomingSem.label,
+      existingSemId:   matchingSem.id,
+      isNew:           false,
+      incomingCourses: incomingSem.courses,
+      diff:            computeImportDiff(matchingSem.courses, incomingSem.courses),
+    };
+  });
 }
 
 
@@ -257,11 +340,11 @@ function buildCourse(fields) {
     id:              fields.id,
     name:            fields.name,
     creditUnits:     fields.creditUnits,
-    score:           fields.score ?? null,
-    grade:           fields.grade ?? null,
-    gradePoint:      fields.gradePoint ?? null,
-    qualityPoint:    fields.qualityPoint ?? null,
-    status:          fields.status ?? "pending",
+    score:           fields.score           ?? null,
+    grade:           fields.grade           ?? null,
+    gradePoint:      fields.gradePoint      ?? null,
+    qualityPoint:    fields.qualityPoint    ?? null,
+    status:          fields.status          ?? "pending",
     nonContributing: fields.creditUnits === 0,
   };
 }

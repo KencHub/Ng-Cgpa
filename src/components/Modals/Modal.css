@@ -896,8 +896,6 @@
 
 
 /* ── Transcript preview: semester blocks ─────────────────────────────────────── */
-/* Shown in file-import mode when the parser detects multiple semester blocks.
-   Sits inside .import-preview, reusing its border/radius wrapper. */
 
 .import-preview__semester {
   border: 1px solid var(--color-border);
@@ -906,7 +904,6 @@
   margin-top: var(--space-3);
 }
 
-/* Remove top margin from the first block so it butts against the summary bar */
 .import-preview__semester:first-child {
   margin-top: 0;
 }
@@ -931,6 +928,39 @@
 .import-preview__semester-meta {
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
+}
+
+
+/* ── Import diff review ──────────────────────────────────────────────────────── */
+
+.import-diff {
+  padding: var(--space-2) 0;
+}
+
+.import-diff__into {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  margin: 0 0 var(--space-4);
+}
+
+.import-diff__into strong {
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+
+.import-diff__group {
+  margin-top: var(--space-4);
+}
+
+.import-diff__group-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-success);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: var(--space-2);
 }
 
 

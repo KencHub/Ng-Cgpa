@@ -330,6 +330,7 @@ export default function App() {
           activeGradeTable={cgpa.activeGradeTable}
           institution={cgpa.institution}
           onImport={cgpa.importCoursesToSemester}
+          onMergeImport={cgpa.mergeImportCourses}
           onAddSemester={cgpa.addSemester}
           onSetSemesterLabel={cgpa.setSemesterLabel}
           onClose={() => cgpa.closeModal("importModalOpen")}
