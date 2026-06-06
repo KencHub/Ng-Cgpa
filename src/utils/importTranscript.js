@@ -39,10 +39,6 @@ async function getPDFLib() {
   if (_pdfjs) return _pdfjs;
   try {
     _pdfjs = await import("pdfjs-dist");
-    // Resolve the worker from the locally installed package.
-    // new URL(..., import.meta.url) is a Vite-native pattern — Vite
-    // bundles the worker file and returns a local URL, so no CDN or
-    // network request is needed and the version always matches exactly.
     _pdfjs.GlobalWorkerOptions.workerSrc = new URL(
       "pdfjs-dist/build/pdf.worker.min.mjs",
       import.meta.url
@@ -68,7 +64,6 @@ export async function parseXLSXTranscript(file, gradeTable, generateId) {
 
   for (const sheetName of wb.SheetNames) {
     const sheet = wb.Sheets[sheetName];
-    // header:1 → array of arrays. defval:"" fills empty cells.
     const rows  = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
     const found = parseSheetForSemesters(rows, gradeTable, generateId, sheetName, skipped);
     allSemesters.push(...found);
@@ -119,11 +114,9 @@ export async function parsePDFTranscript(file, gradeTable, generateId) {
 
 
 // ── PDF: Row Grouping ─────────────────────────────────────────────────────────
-// Groups text items by Y-coordinate to reconstruct table rows.
-// threshold=3 handles minor vertical misalignment within a row.
 
-function groupItemsIntoRows(items, threshold = 3) {
-  const buckets = new Map(); // roundedY → [{ x, text }]
+function groupItemsIntoRows(items, threshold = 10) {
+  const buckets = new Map();
 
   for (const item of items) {
     const text = item.str.trim();
@@ -143,7 +136,6 @@ function groupItemsIntoRows(items, threshold = 3) {
     buckets.get(bucketY).push({ x, text });
   }
 
-  // PDF Y-axis starts from bottom; sort descending to read top-to-bottom.
   return [...buckets.entries()]
     .sort(([ya], [yb]) => yb - ya)
     .map(([, cells]) =>
@@ -165,7 +157,6 @@ function parsePDFRowsIntoSemesters(rows, gradeTable, generateId, skipped) {
     const trimmed = row.trim();
     if (!trimmed) continue;
 
-    // Semester header
     const semLabel = detectSemesterLabel(trimmed);
     if (semLabel) {
       current = { label: semLabel, courses: [], sourceGPA: null };
@@ -173,14 +164,12 @@ function parsePDFRowsIntoSemesters(rows, gradeTable, generateId, skipped) {
       continue;
     }
 
-    // Semester / cumulative GPA row — attach to current semester for display
     const gpa = extractGPAFromRow(trimmed);
     if (gpa !== null && current && current.sourceGPA === null) {
       current.sourceGPA = gpa;
       continue;
     }
 
-    // Course row
     const result = parsePDFCourseRow(trimmed, gradeTable, generateId);
     if (result.valid) {
       if (!current) {
@@ -189,8 +178,6 @@ function parsePDFRowsIntoSemesters(rows, gradeTable, generateId, skipped) {
       }
       current.courses.push(result.course);
     }
-    // Non-matching rows (headers, footers, student info) are silently skipped
-    // to avoid noise in the skip report.
   }
 
   return semesters.filter(s => s.courses.length > 0);
@@ -223,7 +210,6 @@ function parseSheetForSemesters(rows, gradeTable, generateId, sheetName, skipped
 
     if (!rowText) continue;
 
-    // Semester header
     const semLabel = detectSemesterLabel(rowText);
     if (semLabel) {
       current = { label: semLabel, courses: [], sourceGPA: null };
@@ -231,14 +217,12 @@ function parseSheetForSemesters(rows, gradeTable, generateId, sheetName, skipped
       continue;
     }
 
-    // GPA row
     const gpa = extractGPAFromRow(rowText);
     if (gpa !== null && current && current.sourceGPA === null) {
       current.sourceGPA = gpa;
       continue;
     }
 
-    // Course row
     const result = extractCourseFromRow(flat, colMap, gradeTable, generateId);
     if (result.valid) {
       if (!current) {
@@ -272,7 +256,6 @@ function mapHeaderColumns(row) {
   for (let j = 0; j < row.length; j++) {
     const cell = row[j];
 
-    // Course code column
     if (!map.code) {
       if (
         cell === "course code" || cell === "code" ||
@@ -283,7 +266,6 @@ function mapHeaderColumns(row) {
       }
     }
 
-    // Credit units column — prefer explicit "credit unit" over bare "unit"
     if (map.cu === undefined) {
       if (
         cell.includes("credit unit") || cell.includes("credit hours") ||
@@ -295,18 +277,15 @@ function mapHeaderColumns(row) {
       }
     }
 
-    // Grade column — must be exactly "grade", not "grade point" or "grade points"
     if (map.grade === undefined && cell === "grade") {
       map.grade = j;
     }
 
-    // Score / mark column
     if (map.score === undefined && (cell.includes("score") || cell.includes("mark"))) {
       map.score = j;
     }
   }
 
-  // Require at minimum: code + CU + (grade or score)
   if (map.code === undefined || map.cu === undefined) return null;
   if (map.grade === undefined && map.score === undefined) return null;
 
@@ -323,14 +302,13 @@ function extractCourseFromRow(flat, colMap, gradeTable, generateId) {
   const rawScore = colMap.score !== undefined ? (flat[colMap.score] ?? "") : "";
 
   const name = rawCode.trim();
-  if (!name) return { valid: false, reason: null }; // empty row, silent
+  if (!name) return { valid: false, reason: null };
 
   const cu = parseInt(rawCU, 10);
   if (isNaN(cu) || cu < 0 || cu > 6) {
     return { valid: false, reason: `Invalid credit units: "${rawCU}".` };
   }
 
-  // Prefer grade column over score column when both are present
   const thirdField = rawGrade.trim() || rawScore.trim();
   if (!thirdField) {
     return { valid: false, reason: "No grade or score found in this row." };
@@ -341,42 +319,98 @@ function extractCourseFromRow(flat, colMap, gradeTable, generateId) {
 
 
 // ── PDF: Course Row Extraction ────────────────────────────────────────────────
-// Nigerian course codes: 2-7 uppercase letters + space + 3 digits + optional letter.
-// Examples: "GST 111", "MATHS 101", "CHEM 108", "RAD 206", "BIOSTAT 204"
-//
-// Row text after grouping: "GST 111 [optional title words] 2 A 5 10"
-//
-// Strategy: match the code prefix, then scan tokens for the first integer
-// in 0-6 range that is immediately followed by a grade letter (A-H).
+// CHANGED: n >= 0 and m >= 0 throughout to correctly handle 0-credit courses.
 
-const COURSE_CODE_RE = /^([A-Z]{2,7})\s+(\d{3}[A-Z]?)\b/;
+const COURSE_CODE_RE = /([A-Z]{2,7})\s*(\d{3}[A-Z]?)\b/;
 
 function parsePDFCourseRow(rowText, gradeTable, generateId) {
   const match = rowText.match(COURSE_CODE_RE);
   if (!match) return { valid: false };
 
   const courseCode = `${match[1]} ${match[2]}`;
-  const remainder  = rowText.slice(match[0].length).trim();
-  const tokens     = remainder.split(/\s+/);
+  const remainder  = rowText.slice(match.index + match[0].length).trim();
+  const tokens     = remainder.split(/\s+/).filter(Boolean);
 
-  let cuIndex = -1;
+  let cu    = null;
+  let grade = null;
+  let score = null;
 
-  for (let i = 0; i < tokens.length; i++) {
-    const n = parseInt(tokens[i], 10);
-    // Must be a clean integer 0-6 (no decimal), followed by a grade letter
-    if (!isNaN(n) && n >= 0 && n <= 6 && String(n) === tokens[i]) {
-      const next = tokens[i + 1] ?? "";
-      if (/^[A-Ha-h]$/.test(next)) {
-        cuIndex = i;
-        break;
-      }
+  // ── Pass 1: integer (0-9) immediately followed by a grade letter ──────────
+  for (let i = 0; i < tokens.length - 1; i++) {
+    const n    = parseInt(tokens[i], 10);
+    const next = tokens[i + 1];
+    if (
+      !isNaN(n) && n >= 0 && n <= 9 &&
+      String(n) === tokens[i] &&
+      /^[A-Ha-h]$/.test(next)
+    ) {
+      cu    = n;
+      grade = next.toUpperCase();
+      break;
     }
   }
 
-  if (cuIndex === -1) return { valid: false };
+  // ── Pass 2: find grade letter, then search nearby tokens for CU ───────────
+  if (!grade) {
+    for (let i = 0; i < tokens.length; i++) {
+      if (!/^[A-Ha-h]$/.test(tokens[i])) continue;
 
-  const cu    = parseInt(tokens[cuIndex], 10);
-  const grade = tokens[cuIndex + 1].toUpperCase();
+      // Search backward for CU (up to 4 positions back)
+      for (let j = i - 1; j >= Math.max(0, i - 4); j--) {
+        const n = parseInt(tokens[j], 10);
+        if (!isNaN(n) && n >= 0 && n <= 9 && String(n) === tokens[j]) {
+          cu    = n;
+          grade = tokens[i].toUpperCase();
+          break;
+        }
+      }
+      if (cu !== null) break;
+
+      // Search forward for CU (up to 4 positions ahead)
+      for (let j = i + 1; j <= Math.min(tokens.length - 1, i + 4); j++) {
+        const n = parseInt(tokens[j], 10);
+        if (!isNaN(n) && n >= 0 && n <= 9 && String(n) === tokens[j]) {
+          cu    = n;
+          grade = tokens[i].toUpperCase();
+          break;
+        }
+      }
+      if (cu !== null) break;
+    }
+  }
+
+  // ── Pass 3: score-based transcript (no grade letter, score 10-100) ────────
+  if (!grade) {
+    for (let i = 0; i < tokens.length; i++) {
+      const n = parseInt(tokens[i], 10);
+      if (isNaN(n) || n <= 9 || n > 100 || String(n) !== tokens[i]) continue;
+      score = n;
+
+      // Look for CU before the score
+      for (let j = i - 1; j >= Math.max(0, i - 3); j--) {
+        const m = parseInt(tokens[j], 10);
+        if (!isNaN(m) && m >= 0 && m <= 9 && String(m) === tokens[j]) {
+          cu = m; break;
+        }
+      }
+      // Or CU after the score
+      if (cu === null) {
+        for (let j = i + 1; j <= Math.min(tokens.length - 1, i + 3); j++) {
+          const m = parseInt(tokens[j], 10);
+          if (!isNaN(m) && m >= 0 && m <= 9 && String(m) === tokens[j]) {
+            cu = m; break;
+          }
+        }
+      }
+      if (cu !== null) break;
+    }
+
+    if (score !== null && cu !== null) {
+      return resolveAndBuild(courseCode, cu, String(score), gradeTable, generateId);
+    }
+  }
+
+  if (!grade || cu === null) return { valid: false };
 
   return resolveAndBuild(courseCode, cu, grade, gradeTable, generateId);
 }
@@ -387,7 +421,6 @@ function parsePDFCourseRow(rowText, gradeTable, generateId) {
 function resolveAndBuild(name, cu, thirdField, gradeTable, generateId) {
   const trimmed = thirdField.trim();
 
-  // Numeric → treat as score
   if (!isNaN(trimmed) && trimmed !== "") {
     const score = Math.round(parseFloat(trimmed));
     if (score < 0 || score > 100) {
@@ -410,7 +443,6 @@ function resolveAndBuild(name, cu, thirdField, gradeTable, generateId) {
     };
   }
 
-  // Letter → treat as grade
   const letter = trimmed.toUpperCase();
   const entry  = gradeTable.find(g => g.letter.toUpperCase() === letter);
 
@@ -434,15 +466,12 @@ function resolveAndBuild(name, cu, thirdField, gradeTable, generateId) {
 
 
 // ── Semester Label Detection ──────────────────────────────────────────────────
-// Matches: "100 LEVEL — FIRST SEMESTER", "100L FIRST SEMESTER",
-//          "200 LEVEL SECOND SEMESTER", "FIRST SEMESTER", etc.
-// Short-circuits on long lines to avoid false positives in course titles.
 
 const SEM_ORDINAL_RE = /(first|second|1st|2nd)\s+semester/i;
 const SEM_LEVEL_RE   = /(\d{3})\s*(?:level|l)?\b/i;
 
 function detectSemesterLabel(text) {
-  if (text.length > 70) return null; // too long to be a header
+  if (text.length > 70) return null;
 
   const ordMatch = text.match(SEM_ORDINAL_RE);
   if (!ordMatch) return null;
@@ -482,7 +511,6 @@ function resolveGradeFromScore(score, gradeTable) {
 
 
 // ── Course Builder ────────────────────────────────────────────────────────────
-// Matches the shape produced by buildCourse() in importParser.js exactly.
 
 function buildTranscriptCourse({ id, name, creditUnits, score, grade, gradePoint, qualityPoint }) {
   return {
