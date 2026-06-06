@@ -1065,38 +1065,3 @@ function IconFile() {
   );
 }
 
-
-/*
-── ADD TO Modal.css (Batch 25) ───────────────────────────────────────────────
-
-.import-diff {
-  padding: var(--space-2) 0;
-}
-
-.import-diff__into {
-  font-size: 13px;
-  color: var(--color-text-secondary);
-  margin: 0 0 var(--space-4);
-}
-
-.import-diff__into strong {
-  color: var(--color-text-primary);
-  font-weight: 600;
-}
-
-.import-diff__group {
-  margin-top: var(--space-4);
-}
-
-.import-diff__group-title {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--color-success);
-  padding-bottom: var(--space-2);
-  border-bottom: 1px solid var(--color-border);
-  margin-bottom: var(--space-2);
-}
-
-─────────────────────────────────────────────────────────────────────────────*/
