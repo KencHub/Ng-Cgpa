@@ -21,19 +21,19 @@ import {
 } from "./utils/exportJSON.js";
 
 // Components — built in batches 12–27
-import Header           from "./components/Header/Header.jsx";
-import Footer           from "./components/Footer/Footer.jsx";
+import Header             from "./components/Header/Header.jsx";
+import Footer             from "./components/Footer/Footer.jsx";
 import StudentProfileBar  from "./components/StudentProfileBar/StudentProfileBar.jsx";
-import SemesterTabs     from "./components/SemesterTabs/SemesterTabs.jsx";
-import SemesterPanel    from "./components/SemesterPanel/SemesterPanel.jsx";
-import SuggestionEngine from "./components/SuggestionEngine/SuggestionEngine.jsx";
-import CGPASummary      from "./components/CGPASummary/CGPASummary.jsx";
-import ProjectionPanel  from "./components/ProjectionPanel/ProjectionPanel.jsx";
-import ImprovementChat  from "./components/ImprovementChat/ImprovementChat.jsx";
-import InstitutionModal from "./components/Modals/InstitutionModal.jsx";
-import ImportModal      from "./components/Modals/ImportModal.jsx";
+import SemesterTabs       from "./components/SemesterTabs/SemesterTabs.jsx";
+import SemesterPanel      from "./components/SemesterPanel/SemesterPanel.jsx";
+import SuggestionEngine   from "./components/SuggestionEngine/SuggestionEngine.jsx";
+import CGPASummary        from "./components/CGPASummary/CGPASummary.jsx";
+import ProjectionPanel    from "./components/ProjectionPanel/ProjectionPanel.jsx";
+import ImprovementChat    from "./components/ImprovementChat/ImprovementChat.jsx";
+import InstitutionModal   from "./components/Modals/InstitutionModal.jsx";
+import ImportModal        from "./components/Modals/ImportModal.jsx";
 import ClearConfirmDialog from "./components/Modals/ClearConfirmDialog.jsx";
-import HelpCenter       from "./components/HelpCenter/HelpCenter.jsx";
+import HelpCenter         from "./components/HelpCenter/HelpCenter.jsx";
 
 import "./App.css";
 
@@ -50,14 +50,14 @@ export default function App() {
   const [infoModalOpen, setInfoModalOpen] = useState(false);
 
   const chat = useChat({
-    institution:          cgpa.institution,
-    student:              cgpa.student,
-    semesters:            cgpa.semesters,
-    cgpa:                 cgpa.cgpa,
-    degreeClass:          cgpa.degreeClass,
-    semesterSummaries:    cgpa.semesterSummaries,
-    totals:               cgpa.totals,
-    activeScale:          cgpa.activeScale,
+    institution:           cgpa.institution,
+    student:               cgpa.student,
+    semesters:             cgpa.semesters,
+    cgpa:                  cgpa.cgpa,
+    degreeClass:           cgpa.degreeClass,
+    semesterSummaries:     cgpa.semesterSummaries,
+    totals:                cgpa.totals,
+    activeScale:           cgpa.activeScale,
     activeClassifications: cgpa.activeClassifications,
   });
 
@@ -151,7 +151,6 @@ export default function App() {
         cgpa.loadFromSaved(result.state);
       } else {
         console.warn("[NG CGPA] JSON import failed:", result.error);
-        // The ImportModal renders its own error state from this
       }
     };
     reader.readAsText(file);
@@ -314,15 +313,15 @@ export default function App() {
       )}
 
       {infoModalOpen && cgpa.institution && (
-  <InstitutionModal
-    institution={cgpa.institution}
-    useUILegacyScale={cgpa.useUILegacyScale}
-    onSelect={null}
-    onToggleLegacy={cgpa.toggleUILegacyScale}
-    onClose={() => setInfoModalOpen(false)}
-    infoOnly
-  />
-)}
+        <InstitutionModal
+          institution={cgpa.institution}
+          useUILegacyScale={cgpa.useUILegacyScale}
+          onSelect={null}
+          onToggleLegacy={cgpa.toggleUILegacyScale}
+          onClose={() => setInfoModalOpen(false)}
+          infoOnly
+        />
+      )}
 
       {cgpa.ui.importModalOpen && (
         <ImportModal
@@ -332,6 +331,7 @@ export default function App() {
           institution={cgpa.institution}
           onImport={cgpa.importCoursesToSemester}
           onAddSemester={cgpa.addSemester}
+          onSetSemesterLabel={cgpa.setSemesterLabel}
           onClose={() => cgpa.closeModal("importModalOpen")}
         />
       )}
@@ -358,8 +358,6 @@ export default function App() {
 
 
 // ── Inline helper components ──────────────────────────────────────────────────
-// Small, app-specific components that don't warrant their own file.
-
 
 function AppLoadingScreen() {
   return (
@@ -496,7 +494,6 @@ function EmptyStart({ onSelectInstitution, onAddSemester, hasInstitution }) {
 
 
 function MobileCGPABar({ cgpa, degreeClassShort, degreeClassEntry, scaleMax, semesterCount }) {
-  // Mobile-only sticky CGPA bar. Hidden on desktop via CSS.
   if (cgpa === null) return null;
 
   const classColor = degreeClassEntry

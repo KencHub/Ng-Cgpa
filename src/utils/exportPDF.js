@@ -395,8 +395,10 @@ function buildCourseDetailPages(doc, { semesters }) {
         (course.grade && course.grade.toUpperCase() === "F");
 
       return [
-        course.name && course.name.trim() !== "" ? course.name.trim() : "Unnamed",
-        isNC ? "0 (NC)" : String(course.creditUnits ?? "\u2014"),
+        isNC
+          ? `${course.name && course.name.trim() !== "" ? course.name.trim() : "Unnamed"} (NC)`
+          : course.name && course.name.trim() !== "" ? course.name.trim() : "Unnamed",
+        isNC ? "0" : String(course.creditUnits ?? "\u2014"),
         course.score !== null && course.score !== undefined
           ? String(course.score)
           : "\u2014",

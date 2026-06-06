@@ -70,8 +70,6 @@ export function useCGPA() {
 
 
   // ── Active grading context ──────────────────────────────────────────────────
-  // When UI's legacy 7.0 toggle is active, swap in the legacy scale data.
-  // All calculations automatically use these derived tables.
 
   const activeGradeTable = useMemo(() => {
     if (useUILegacyScale && institution?.legacyScale) {
@@ -103,9 +101,6 @@ export function useCGPA() {
 
 
   // ── Re-resolve all courses when grade table changes ─────────────────────────
-  // When the user switches institution or toggles the UI legacy scale,
-  // every course's gradePoint and qualityPoint are recomputed immediately.
-  // The raw score/grade inputs are preserved — only the derived fields change.
 
   useEffect(() => {
     if (!activeGradeTable || activeGradeTable.length === 0) return;
@@ -251,7 +246,6 @@ export function useCGPA() {
 
   const setInstitution = useCallback((inst) => {
     setInstitutionState(inst);
-    // Reset legacy scale whenever institution changes
     setUseUILegacyScale(false);
   }, []);
 
@@ -270,15 +264,15 @@ export function useCGPA() {
   // ── Semesters ───────────────────────────────────────────────────────────────
 
   const addSemester = useCallback(() => {
-  const id = generateSemesterId();
-  setSemesters((prev) => {
-    const label = generateSemesterLabel(prev.length + 1);
-    const sem   = { id, label, isCollapsed: false, courses: [] };
-    setActiveTabState(id);
-    return [...prev, sem];
-  });
-  return id;
-}, []);
+    const id = generateSemesterId();
+    setSemesters((prev) => {
+      const label = generateSemesterLabel(prev.length + 1);
+      const sem   = { id, label, isCollapsed: false, courses: [] };
+      setActiveTabState(id);
+      return [...prev, sem];
+    });
+    return id;
+  }, []);
 
   const removeSemester = useCallback((semesterId) => {
     setSemesters((prev) => {
@@ -287,7 +281,6 @@ export function useCGPA() {
 
       setActiveTabState(() => {
         if (filtered.length === 0) return null;
-        // Move to the semester before the removed one, or the first
         const targetIdx = Math.max(0, idx - 1);
         return filtered[targetIdx]?.id || filtered[0]?.id || null;
       });
@@ -305,6 +298,10 @@ export function useCGPA() {
       )
     );
   }, []);
+
+  // setSemesterLabel is the public alias used by ImportModal after a file import.
+  // It calls renameSemester so the same trimming and 60-char cap apply.
+  const setSemesterLabel = renameSemester;
 
   const toggleSemesterCollapse = useCallback((semesterId) => {
     setSemesters((prev) =>
@@ -409,7 +406,6 @@ export function useCGPA() {
     setDismissed((prev) => new Set([...prev, id]));
   }, []);
 
-  // Called by usePersistence on load to restore saved dismissed set
   const loadDismissedSet = useCallback((set) => {
     setDismissed(set instanceof Set ? set : new Set(set));
   }, []);
@@ -440,17 +436,15 @@ export function useCGPA() {
   }, []);
 
 
-  // ── Load from saved (called by usePersistence on mount) ──────────────────────
+  // ── Load from saved ───────────────────────────────────────────────────────────
 
   const loadFromSaved = useCallback((saved) => {
     if (!saved) return;
 
-    // ── Institution ──────────────────────────────────────────────────────────
     if (saved.institutionId) {
       let inst = getInstitutionById(saved.institutionId);
 
       if (!inst && saved.customInstitution) {
-        // Reconstruct custom school from saved data
         inst = {
           ...saved.customInstitution,
           status: "active",
@@ -464,12 +458,10 @@ export function useCGPA() {
       setUseUILegacyScale(saved.useUILegacyScale);
     }
 
-    // ── Student ──────────────────────────────────────────────────────────────
     if (saved.student) {
       setStudentState((prev) => ({ ...prev, ...saved.student }));
     }
 
-    // ── Semesters ────────────────────────────────────────────────────────────
     if (Array.isArray(saved.semesters) && saved.semesters.length > 0) {
       const restored = saved.semesters.map((sem) => ({
         ...sem,
@@ -489,7 +481,6 @@ export function useCGPA() {
       setActiveTabState(tabId);
     }
 
-    // ── Projection ───────────────────────────────────────────────────────────
     if (saved.projection) {
       setProjectionState((prev) => ({ ...prev, ...saved.projection }));
     }
@@ -533,6 +524,7 @@ export function useCGPA() {
     addSemester,
     removeSemester,
     renameSemester,
+    setSemesterLabel,       // alias of renameSemester, used by ImportModal
     toggleSemesterCollapse,
     setActiveTab,
     addCourse,

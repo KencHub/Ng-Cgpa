@@ -357,8 +357,8 @@ const CourseRow = React.forwardRef(function CourseRow(
                 0 credit units. This course is recorded and graded but does
                 not affect your GPA or CGPA.
                 {schoolName
-                  ? ` Common for general studies courses such as GST115 at ${schoolName}.`
-                  : " Common for general studies courses."}
+  ? ` Common for general studies courses at ${schoolName}.`
+  : " Common for general studies courses."}
               </InfoPopover>
             </>
           )}

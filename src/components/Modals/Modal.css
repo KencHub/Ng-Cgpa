@@ -78,8 +78,6 @@
 }
 
 
-
-
 /* ── Detail header row ───────────────────────────────────────────────────────── */
 
 .inst-detail__header {
@@ -140,11 +138,6 @@
 
 
 /* ── Website link ────────────────────────────────────────────────────────────── */
-/* display:flex (not inline-flex) so it can be aligned with align-self:flex-start
-   without the subtleties of inline formatting context.
-   inst-detail__website-icon wraps the SVG so both children are <span> elements
-   — a bare SVG as a direct flex child can be forced to display:block on Android
-   Chrome, which breaks the row. */
 
 .inst-detail__website-link {
   display: flex;
@@ -169,8 +162,6 @@
   color: var(--color-primary);
 }
 
-/* flex-shrink:0 + line-height:0 eliminates the extra height SVGs pick up
-   from line-height inside an inline formatting context. */
 .inst-detail__website-icon {
   display: flex;
   align-items: center;
@@ -224,9 +215,6 @@
 
 
 /* ── NUC note ────────────────────────────────────────────────────────────────── */
-/* display:flex so the circle-i icon and the text stay on the same row.
-   The ℹ Unicode codepoint (U+2139) renders inconsistently on Android fonts,
-   appearing as a bare "i" with no circle. We build the circle in CSS instead. */
 
 .inst-detail__nuc-note {
   display: flex;
@@ -265,11 +253,6 @@
 
 
 /* ── Collapsible sections ────────────────────────────────────────────────────── */
-/* Uses a <button> toggle (inst-detail__section-toggle) instead of
-   <details>/<summary>. Android Chrome still renders its native ► marker
-   on <summary> elements even when display:flex + list-style:none +
-   ::marker suppression are all applied. The button approach is fully
-   reliable across all target browsers. */
 
 .inst-detail__section {
   border: 1px solid var(--color-border);
@@ -278,7 +261,6 @@
 }
 
 .inst-detail__section-toggle {
-  /* Reset button defaults */
   appearance: none;
   -webkit-appearance: none;
   border: none;
@@ -289,7 +271,6 @@
   cursor: pointer;
   text-align: left;
 
-  /* Layout */
   width: 100%;
   display: flex;
   flex-direction: row;
@@ -305,13 +286,11 @@
   background-color: var(--color-surface-3);
 }
 
-/* Visually hide the native focus ring; keyboard users get it via outline */
 .inst-detail__section-toggle:focus-visible {
   outline: 2px solid var(--color-primary-light);
   outline-offset: -2px;
 }
 
-/* Chevron icon — transitions from pointing right (►) to pointing down (▼) */
 .inst-detail__chevron {
   display: flex;
   align-items: center;
@@ -319,8 +298,6 @@
   flex-shrink: 0;
   color: var(--color-text-muted);
   transition: transform 0.18s ease;
-  /* Prevent the SVG inside from receiving pointer events so clicks always
-     register on the button, not the SVG path. */
   pointer-events: none;
 }
 
@@ -333,7 +310,6 @@
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-medium);
   color: var(--color-text-primary);
-  /* Prevent text from being selectable during rapid taps */
   user-select: none;
 }
 
@@ -430,7 +406,6 @@
   color: var(--color-text-secondary);
 }
 
-/* Grade letter badge */
 .grade-table__letter {
   display: inline-flex;
   align-items: center;
@@ -470,8 +445,6 @@
   flex-direction: column;
 }
 
-/* Left accent border communicates class tier visually without extra markup.
-   data-rank is set by the sorted index (0 = highest class = first class). */
 .class-table__row {
   display: flex;
   flex-direction: row;
@@ -490,7 +463,6 @@
   background-color: var(--color-surface);
 }
 
-/* Tier colors by sorted rank */
 .class-table__row[data-rank="0"] { border-left-color: var(--color-success);        }
 .class-table__row[data-rank="1"] { border-left-color: var(--color-primary);        }
 .class-table__row[data-rank="2"] { border-left-color: var(--color-warning);        }
@@ -511,20 +483,12 @@
   font-size: var(--font-size-xs);
 }
 
-/* display:block is used deliberately instead of flex-direction:column.
-   On some Android Chrome builds, flex-direction:column on a div inside a
-   flex row does not apply correctly when the parent chain involves certain
-   cascade overrides, causing children to flow inline. display:block on the
-   container guarantees the label occupies a full block line, which pushes
-   the short badge to the next line without any flex dependency. */
 .class-table__info {
   flex: 1;
   min-width: 0;
   display: block;
 }
 
-/* display:block forces this to its own line regardless of what follows it.
-   This is the fix for "First Class HonoursFirst Class" concatenation. */
 .class-table__label {
   display: block;
   font-size: var(--font-size-sm);
@@ -532,9 +496,6 @@
   line-height: 1.4;
 }
 
-/* display:inline-block keeps the badge auto-width (not stretching to full
-   column width like display:block would). margin-top separates it from the
-   label above. */
 .class-table__short {
   display: inline-block;
   margin-top: 4px;
@@ -672,6 +633,106 @@
   border-radius: var(--radius-md);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
+}
+
+
+/* ── Mode tabs ───────────────────────────────────────────────────────────────── */
+
+.import-modal__mode-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: var(--space-5);
+}
+
+.import-modal__mode-tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: var(--space-2) var(--space-4);
+  font-size: 13px;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  margin-bottom: -1px;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.import-modal__mode-tab--active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+}
+
+.import-modal__mode-tab:hover:not(.import-modal__mode-tab--active) {
+  color: var(--color-text-primary);
+}
+
+
+/* ── File section ────────────────────────────────────────────────────────────── */
+
+.import-modal__file-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.import-modal__file-buttons {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.import-modal__file-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+}
+
+.import-modal__file-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.import-modal__spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+.import-modal__file-name {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  background: var(--color-surface-2);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-md);
+  width: fit-content;
+}
+
+.import-modal__file-error {
+  font-size: var(--font-size-sm);
+  color: var(--color-danger);
+  background: var(--color-danger-light);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  line-height: var(--line-height-relaxed);
+}
+
+.import-modal__file-hint {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  line-height: var(--line-height-relaxed);
+  margin: 0;
 }
 
 
@@ -834,6 +895,45 @@
 }
 
 
+/* ── Transcript preview: semester blocks ─────────────────────────────────────── */
+/* Shown in file-import mode when the parser detects multiple semester blocks.
+   Sits inside .import-preview, reusing its border/radius wrapper. */
+
+.import-preview__semester {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin-top: var(--space-3);
+}
+
+/* Remove top margin from the first block so it butts against the summary bar */
+.import-preview__semester:first-child {
+  margin-top: 0;
+}
+
+.import-preview__semester-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-2) var(--space-3);
+  background-color: var(--color-surface-2);
+  border-bottom: 1px solid var(--color-border);
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.import-preview__semester-label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.import-preview__semester-meta {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+
 /* ══════════════════════════════════════════════════════════════════════════════
    CLEAR CONFIRM DIALOG
    ══════════════════════════════════════════════════════════════════════════════ */
@@ -936,6 +1036,15 @@
 
 
 /* ══════════════════════════════════════════════════════════════════════════════
+   KEYFRAMES
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════════
    RESPONSIVE
    ══════════════════════════════════════════════════════════════════════════════ */
 
@@ -965,6 +1074,12 @@
 
   .import-preview__course-qp {
     display: none;
+  }
+
+  .import-preview__semester-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-1);
   }
 
   .clear-confirm {
