@@ -3,21 +3,20 @@
 //
 // 1. Backward Projection — "What GPA do I need each semester to reach X.XX?"
 //    Inputs:  Target CGPA, remaining semesters, estimated CU per semester
-//    Outputs: Required GPA per semester, feasibility rating
+//    Outputs: Required GPA per semester, feasibility rating, grade mix hint
 //
 // 2. Forward Simulation — "What will my CGPA be if I get X.XX next semester?"
 //    Inputs:  Next semester GPA, next semester credit units
 //    Outputs: Projected CGPA, new degree class, delta from current
-//
-// All backward-projection arithmetic is in useCGPA (via projection.js) and
-// arrives as the `projectionResult` prop. Forward simulation is computed
-// locally because it is display-only state that does not need to be persisted.
 
 
-import React, { useState, useMemo, useCallback, useRef, useId } from "react";
+import React, { useState, useMemo, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
-import { computeForwardSimulation } from "../../utils/projection.js";
-import { ClassBadgeCompact }        from "../CGPASummary/ClassBadge.jsx";
+import {
+  computeForwardSimulation,
+  computeGradeMixSuggestions,
+} from "../../utils/projection.js";
+import { ClassBadgeCompact } from "../CGPASummary/ClassBadge.jsx";
 import "./ProjectionPanel.css";
 
 
@@ -34,42 +33,38 @@ export default function ProjectionPanel({
 }) {
   const [expanded, setExpanded] = useState(true);
 
-  // Forward simulator local state
   const [nextGPA, setNextGPA] = useState("");
   const [nextCU,  setNextCU]  = useState("");
 
-  const hasCurrentData  = totals.totalCU > 0;
-  const currentCGPA     = hasCurrentData
+  const hasCurrentData = totals.totalCU > 0;
+  const currentCGPA    = hasCurrentData
     ? Math.round((totals.totalQP / totals.totalCU) * 10000) / 10000
     : null;
 
-  // Effective CU for forward simulation: typed value → estimated CU → 18
   const effectiveNextCU = useMemo(() => {
     const typed     = parseFloat(nextCU);
     const estimated = parseFloat(projection.estimatedCUPerSemester);
-    if (!isNaN(typed) && typed > 0)     return typed;
+    if (!isNaN(typed) && typed > 0)         return typed;
     if (!isNaN(estimated) && estimated > 0) return estimated;
     return 18;
   }, [nextCU, projection.estimatedCUPerSemester]);
 
-  // Forward simulation result (computed locally)
   const forwardResult = useMemo(() => {
     const gpa = parseFloat(nextGPA);
     if (isNaN(gpa) || gpa < 0 || gpa > activeScale) return null;
     if (!hasCurrentData) return null;
     return computeForwardSimulation({
-      currentTotalCU:    totals.totalCU,
-      currentTotalQP:    totals.totalQP,
-      nextSemGPA:        gpa,
-      nextSemCU:         effectiveNextCU,
-      classifications:   activeClassifications,
+      currentTotalCU:  totals.totalCU,
+      currentTotalQP:  totals.totalQP,
+      nextSemGPA:      gpa,
+      nextSemCU:       effectiveNextCU,
+      classifications: activeClassifications,
     });
   }, [nextGPA, effectiveNextCU, totals, activeScale, activeClassifications, hasCurrentData]);
 
   return (
     <div className="projection-panel panel-card">
 
-      {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div
         className="collapsible-header projection-panel__header"
         role="button"
@@ -101,20 +96,18 @@ export default function ProjectionPanel({
         </svg>
       </div>
 
-      {/* ── Body ───────────────────────────────────────────────────────────── */}
       {expanded && (
         <div className="projection-panel__body">
 
-          {/* ── Section 1: Backward projection ─────────────────────────── */}
           <BackwardSection
             projection={projection}
             projectionResult={projectionResult}
             activeScale={activeScale}
+            activeGradeTable={activeGradeTable}
             onSetProjection={onSetProjection}
             currentCGPA={currentCGPA}
           />
 
-          {/* ── Section 2: Forward simulation ──────────────────────────── */}
           {hasCurrentData && (
             <ForwardSection
               nextGPA={nextGPA}
@@ -128,7 +121,6 @@ export default function ProjectionPanel({
             />
           )}
 
-          {/* Prompt to enter data when nothing entered yet */}
           {!hasCurrentData && (
             <p className="projection-panel__no-data">
               Enter your courses first. Projections use your current totals
@@ -150,12 +142,13 @@ function BackwardSection({
   projection,
   projectionResult,
   activeScale,
+  activeGradeTable,
   onSetProjection,
   currentCGPA,
 }) {
-  const [targetError, setTargetError]   = useState("");
-  const [semsError,   setSemsError]     = useState("");
-  const [cuError,     setCUError]       = useState("");
+  const [targetError, setTargetError] = useState("");
+  const [semsError,   setSemsError]   = useState("");
+  const [cuError,     setCUError]     = useState("");
 
   function handleTargetChange(e) {
     const raw = e.target.value;
@@ -204,17 +197,16 @@ function BackwardSection({
     }
   }
 
-  const targetVal = projection.targetCGPA    !== null ? String(projection.targetCGPA)            : "";
-  const semsVal   = projection.remainingSemesters !== null ? String(projection.remainingSemesters) : "";
+  const targetVal = projection.targetCGPA !== null
+    ? String(projection.targetCGPA) : "";
+  const semsVal   = projection.remainingSemesters !== null
+    ? String(projection.remainingSemesters) : "";
   const cuVal     = projection.estimatedCUPerSemester !== null
-    ? String(projection.estimatedCUPerSemester)
-    : "";
+    ? String(projection.estimatedCUPerSemester) : "";
 
   return (
     <div className="projection-section">
-    
 
-      {/* Three inputs */}
       <div className="projection-inputs">
 
         <ProjectionInput
@@ -259,10 +251,11 @@ function BackwardSection({
 
       </div>
 
-      {/* Result */}
       <ProjectionResult
         result={projectionResult}
         activeScale={activeScale}
+        activeGradeTable={activeGradeTable}
+        estimatedCUPerSem={projection.estimatedCUPerSemester}
         currentCGPA={currentCGPA}
         targetCGPA={projection.targetCGPA}
       />
@@ -274,10 +267,16 @@ function BackwardSection({
 
 // ── Projection result ─────────────────────────────────────────────────────────
 
-function ProjectionResult({ result, activeScale, currentCGPA, targetCGPA }) {
+function ProjectionResult({
+  result,
+  activeScale,
+  activeGradeTable,
+  estimatedCUPerSem,
+  currentCGPA,
+  targetCGPA,
+}) {
 
-  // No inputs provided yet
-  if (!result && (targetCGPA === null)) {
+  if (!result && targetCGPA === null) {
     return (
       <div className="projection-result projection-result--prompt">
         <p className="projection-result__prompt">
@@ -288,10 +287,8 @@ function ProjectionResult({ result, activeScale, currentCGPA, targetCGPA }) {
     );
   }
 
-  // Inputs have validation errors — result will be null
   if (!result) return null;
 
-  // No semesters remaining
   if (result.noSemestersRemaining) {
     return (
       <div className="projection-result projection-result--info">
@@ -305,7 +302,6 @@ function ProjectionResult({ result, activeScale, currentCGPA, targetCGPA }) {
     );
   }
 
-  // Not achievable
   if (result.feasibility === "not_achievable") {
     return (
       <div className="projection-result projection-result--danger">
@@ -325,7 +321,6 @@ function ProjectionResult({ result, activeScale, currentCGPA, targetCGPA }) {
     );
   }
 
-  // Valid result — show required GPA
   return (
     <div className="projection-result projection-result--valid">
 
@@ -354,6 +349,68 @@ function ProjectionResult({ result, activeScale, currentCGPA, targetCGPA }) {
         </p>
       </div>
 
+      {/* Grade mix hint */}
+      {result.requiredGPAPerSemester !== null && activeGradeTable && (
+        <GradeMixHint
+          requiredGPA={result.requiredGPAPerSemester}
+          gradeTable={activeGradeTable}
+          estimatedCUPerSem={estimatedCUPerSem}
+        />
+      )}
+
+    </div>
+  );
+}
+
+
+// ── Grade mix hint ────────────────────────────────────────────────────────────
+
+function GradeMixHint({ requiredGPA, gradeTable, estimatedCUPerSem }) {
+  const suggestions = useMemo(
+    () => computeGradeMixSuggestions(requiredGPA, gradeTable, estimatedCUPerSem),
+    [requiredGPA, gradeTable, estimatedCUPerSem]
+  );
+
+  if (!suggestions.length) return null;
+
+  return (
+    <div className="grade-mix-hint">
+      <span className="grade-mix-hint__label label">Grade mix per semester</span>
+
+      {suggestions.map((s, idx) => (
+        <div key={idx} className="grade-mix-hint__entry">
+          {idx > 0 && <span className="grade-mix-hint__or">or</span>}
+
+          {s.type === "single" ? (
+            <div className="grade-mix-hint__pills">
+              <span className="grade-mix-hint__pill grade-mix-hint__pill--hi">
+                All {s.hi.letter}s
+              </span>
+              {s.nCourses && (
+                <span className="grade-mix-hint__count">
+                  — {s.nCourses} courses
+                </span>
+              )}
+            </div>
+          ) : (
+            <div className="grade-mix-hint__pills">
+              <span className="grade-mix-hint__pill grade-mix-hint__pill--hi">
+                ~{s.hiPct}% {s.hi.letter}
+              </span>
+              <span className="grade-mix-hint__sep">+</span>
+              <span className="grade-mix-hint__pill grade-mix-hint__pill--lo">
+                ~{s.loPct}% {s.lo.letter}
+              </span>
+              {s.hiCount !== null && (
+                <span className="grade-mix-hint__count">
+                  — ~{s.hiCount}&thinsp;{s.hi.letter}{s.hiCount !== 1 ? "s" : ""},
+                  &thinsp;{s.loCount}&thinsp;{s.lo.letter}{s.loCount !== 1 ? "s" : ""}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      ))}
     </div>
   );
 }
@@ -363,11 +420,11 @@ function ProjectionResult({ result, activeScale, currentCGPA, targetCGPA }) {
 
 function FeasibilityBadge({ feasibility }) {
   const config = {
-    achievable:       { label: "Achievable",         mod: "success"  },
-    challenging:      { label: "Challenging",         mod: "warning"  },
-    very_challenging: { label: "Very Challenging",    mod: "danger-warning" },
-    not_achievable:   { label: "Not Achievable",      mod: "danger"   },
-    achieved:         { label: "Already Achieved",    mod: "success"  },
+    achievable:       { label: "Achievable",       mod: "success"       },
+    challenging:      { label: "Challenging",       mod: "warning"       },
+    very_challenging: { label: "Very Challenging",  mod: "danger-warning" },
+    not_achievable:   { label: "Not Achievable",    mod: "danger"        },
+    achieved:         { label: "Already Achieved",  mod: "success"       },
   }[feasibility] || { label: feasibility, mod: "neutral" };
 
   return (
@@ -380,7 +437,6 @@ function FeasibilityBadge({ feasibility }) {
 function getRequiredGPAColor(required, scaleMax) {
   if (required === null || required === undefined) return "var(--color-text-muted)";
   const ratio = required / scaleMax;
-  if (ratio > 1)    return "var(--color-danger)";
   if (ratio > 0.90) return "var(--color-danger)";
   if (ratio > 0.75) return "var(--color-warning)";
   return "var(--color-success)";
@@ -447,7 +503,6 @@ function ForwardSection({
         />
       </div>
 
-      {/* Forward result */}
       {forwardResult?.valid && (
         <ForwardResult
           result={forwardResult}
@@ -513,7 +568,6 @@ function ForwardResult({ result, currentCGPA, activeScale }) {
         )}
       </div>
 
-      {/* Comparison to current */}
       {currentCGPA !== null && (
         <p className="forward-result__compare">
           {direction === "up"
@@ -534,13 +588,13 @@ function ProjectionInput({
   id, label, value, onChange, onBlur,
   error, placeholder, tooltip, step = "any", min, max,
 }) {
-  const [visible, setVisible]   = useState(false);
-  const [pos, setPos]           = useState({ top: 0, left: 0 });
-  const iconRef                 = useRef(null);
+  const [visible, setVisible] = useState(false);
+  const [pos, setPos]         = useState({ top: 0, left: 0 });
+  const iconRef               = useRef(null);
 
   function openTooltip() {
     if (!iconRef.current) return;
-    const r = iconRef.current.getBoundingClientRect();
+    const r  = iconRef.current.getBoundingClientRect();
     const TW = 220;
     let left = r.left;
     if (left + TW > window.innerWidth - 12) left = window.innerWidth - TW - 12;
@@ -605,6 +659,7 @@ function ProjectionInput({
     </div>
   );
 }
+
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 

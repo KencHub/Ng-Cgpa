@@ -1,12 +1,6 @@
 // ── FallbackNotice.jsx ────────────────────────────────────────────────────────
-// A subtle notice strip shown inside the chat panel when the Anthropic API
-// is unreachable.
-//
-// Communicates that the knowledge base is still active so users understand
-// they can still get answers to common questions even without a connection.
-// Does not block the input area — the user can still type and send.
-//
-// CSS lives in ImprovementChat.css.
+// Shown inside the chat panel when the Anthropic API is unreachable.
+// Communicates that the QA cache and knowledge base are still active.
 
 
 import React from "react";
@@ -25,11 +19,11 @@ export default function FallbackNotice() {
       </span>
       <div className="fallback-notice__text">
         <span className="fallback-notice__title">
-          Using knowledge base.
+          Offline — using saved answers.
         </span>
         <span className="fallback-notice__body">
-          Connect to the internet for personalised answers based on
-          your exact results.
+          Past answers and common topics are available. Connect to the
+          internet for personalised responses based on your exact results.
         </span>
       </div>
     </div>

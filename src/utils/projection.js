@@ -179,13 +179,6 @@ export function computeForwardSimulation({
 /**
  * Computes the maximum CGPA theoretically reachable given remaining semesters,
  * assuming the student earns the scale maximum in every future semester.
- *
- * @param {number} currentTotalCU
- * @param {number} currentTotalQP
- * @param {number} remainingSemesters
- * @param {number} estimatedCUPerSem
- * @param {number} scaleMax
- * @returns {number|null}
  */
 export function computeMaxReachableCGPA(
   currentTotalCU,
@@ -214,23 +207,106 @@ export function computeMaxReachableCGPA(
 }
 
 
-// ── Feasibility Assessment ────────────────────────────────────────────────────
+// ── Grade Mix Suggestions ─────────────────────────────────────────────────────
 
 /**
- * Assesses how feasible a required GPA per semester is.
+ * Given a required GPA per semester, returns the approximate grade distribution
+ * a student needs to achieve it. Returns up to 2 suggestions.
  *
- * Thresholds are relative to the school's scale maximum:
- *   > scaleMax:          Not achievable
- *   > 90% of scaleMax:   Very challenging
- *   > 75% of scaleMax:   Challenging but achievable
- *   <= 75% of scaleMax:  Achievable
+ * Primary suggestion: the two adjacent grade tiers that bracket the required GPA.
+ * Alternative:        a mix using the grade one tier above primary (fewer
+ *                     mid-tier grades, more top-tier grades needed).
+ *
+ * Suggestion shape:
+ *   { type: 'single', hi: GradeEntry, nCourses: number|null }
+ *   { type: 'split',  hi, lo, hiPct, loPct, hiCount, loCount, nCourses }
  *
  * @param {number} requiredGPA
- * @param {number} scaleMax
- * @param {number} maxReachableCGPA
- * @param {number} targetCGPA
- * @returns {{ feasibility: string, feasibilityLabel: string }}
+ * @param {Array}  gradeTable         - institution grade table (GradeEntry[])
+ * @param {number} [estimatedCUPerSem] - used to convert % into approximate course counts
+ * @returns {Array}
  */
+export function computeGradeMixSuggestions(requiredGPA, gradeTable, estimatedCUPerSem) {
+  if (
+    !Array.isArray(gradeTable) ||
+    gradeTable.length === 0 ||
+    requiredGPA == null ||
+    isNaN(requiredGPA)
+  ) return [];
+
+  const rGPA = Math.round(requiredGPA * 100) / 100;
+
+  // Passing grades only, sorted high to low
+  const grades = [...gradeTable]
+    .filter(g => typeof g.point === "number" && g.point > 0)
+    .sort((a, b) => b.point - a.point);
+
+  if (grades.length === 0) return [];
+
+  // Approximate number of courses per semester — assumes 3 CU average per course
+  const nCourses =
+    estimatedCUPerSem > 0
+      ? Math.max(2, Math.round(estimatedCUPerSem / 3))
+      : null;
+
+  // Build one split suggestion from a hi-lo grade pair
+  function makeSplit(hi, lo) {
+    if (hi.point === lo.point) return null;
+    const hiRatio = (rGPA - lo.point) / (hi.point - lo.point);
+    if (hiRatio < 0 || hiRatio > 1) return null;
+
+    const hiPct = Math.round(hiRatio * 100);
+    const loPct = 100 - hiPct;
+
+    // Collapses to a single grade when ratio is exactly 0 or 1
+    if (hiPct === 100) return { type: "single", hi, nCourses };
+    if (hiPct === 0)   return { type: "single", hi: lo, nCourses };
+
+    const hiCount = nCourses ? Math.max(1, Math.round(nCourses * hiRatio)) : null;
+    const loCount = nCourses && hiCount !== null ? Math.max(0, nCourses - hiCount) : null;
+
+    return { type: "split", hi, lo, hiPct, loPct, hiCount, loCount, nCourses };
+  }
+
+  // Edge: required GPA at or above the highest passing grade
+  if (rGPA >= grades[0].point) {
+    return [{ type: "single", hi: grades[0], nCourses }];
+  }
+
+  // Edge: required GPA at or below the lowest passing grade
+  if (rGPA <= grades[grades.length - 1].point) {
+    return [{ type: "single", hi: grades[grades.length - 1], nCourses }];
+  }
+
+  const suggestions = [];
+
+  // Find the adjacent pair that brackets the required GPA
+  for (let i = 0; i < grades.length - 1; i++) {
+    const hi = grades[i];
+    const lo = grades[i + 1];
+
+    if (lo.point > rGPA) continue; // pair is entirely above required
+    if (hi.point < rGPA) break;   // all remaining pairs are below required
+
+    const primary = makeSplit(hi, lo);
+    if (primary) suggestions.push(primary);
+
+    // Alternative: replace hi with one tier higher (requires more top-grade effort)
+    if (primary && primary.type === "split" && i > 0) {
+      const altHi = grades[i - 1];
+      const alt   = makeSplit(altHi, lo);
+      if (alt && alt.type === "split") suggestions.push(alt);
+    }
+
+    break;
+  }
+
+  return suggestions.slice(0, 2);
+}
+
+
+// ── Feasibility Assessment ────────────────────────────────────────────────────
+
 function assessFeasibility(requiredGPA, scaleMax, maxReachableCGPA, targetCGPA) {
   if (requiredGPA > scaleMax || maxReachableCGPA < targetCGPA) {
     return {

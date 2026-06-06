@@ -1,22 +1,8 @@
 // ── HelpTopics.js ─────────────────────────────────────────────────────────────
 // Static content for the offline Help Centre.
-// No imports — pure data. All content is accurate for Nigerian university
-// students on NUC 5.0, 4.0, and the UI legacy 7.0 scale.
-//
-// Section types rendered by HelpCenter.jsx:
-//   text    — prose paragraph
-//   formula — highlighted formula block
-//   example — worked calculation box (optional table)
-//   tip     — green callout
-//   warning — amber callout
-//   list    — bulleted list
-//   steps   — numbered steps
-//   table   — structured data table
-//   faq     — array of Q&A pairs
-//   comparison — correct vs incorrect side-by-side
+// No imports — pure data. Accurate for Nigerian university students on
+// NUC 5.0, 4.0, and the UI legacy 7.0 scale.
 
-
-// ── Topic list ────────────────────────────────────────────────────────────────
 
 export const HELP_TOPICS = [
 
@@ -149,13 +135,13 @@ export const HELP_TOPICS = [
   },
 
 
-  // ── 3. Import Format Guide ───────────────────────────────────────────────────
+  // ── 3. Import Format Guide (paste) ───────────────────────────────────────────
   {
     id:        "import-guide",
-    title:     "Importing Courses",
+    title:     "Importing Courses by Pasting",
     category:  "features",
     shortDesc: "How to paste multiple courses at once using the bulk import.",
-    keywords:  ["import", "paste", "bulk", "format", "score", "grade", "csv"],
+    keywords:  ["import", "paste", "bulk", "format", "score", "grade", "csv", "text"],
     sections: [
       {
         type: "text",
@@ -208,7 +194,172 @@ export const HELP_TOPICS = [
   },
 
 
-  // ── 4. Export Guide ──────────────────────────────────────────────────────────
+  // ── 4. File Import Guide (Excel / PDF) ───────────────────────────────────────
+  {
+    id:        "file-import-guide",
+    title:     "Importing from Excel or PDF",
+    category:  "features",
+    shortDesc: "Upload your transcript file to import all semesters at once.",
+    keywords:  [
+      "excel", "xlsx", "xls", "pdf", "file", "upload", "transcript",
+      "semester detection", "student portal", "digital pdf",
+    ],
+    sections: [
+      {
+        type: "text",
+        content:
+          "If your student portal can export results as an Excel spreadsheet or " +
+          "a digital PDF, you can upload that file directly. The parser reads " +
+          "the document, detects semester blocks, extracts course codes, credit " +
+          "units, and grades automatically, then shows you a review before " +
+          "importing anything.",
+      },
+      {
+        type: "steps",
+        title: "How to import a file",
+        items: [
+          "Click the Import button in the header (↓ icon).",
+          "Switch to the 'Import from file' tab.",
+          "Click 'Excel (.xlsx)' or 'PDF transcript' to select your file.",
+          "Wait a moment — the parser detects columns and semester labels.",
+          "Review the preview. If multiple semesters are detected, each one " +
+          "is shown separately with its course list.",
+          "Click 'Import X Courses' to proceed to the diff review.",
+          "Confirm to add the courses to your existing data.",
+        ],
+      },
+      {
+        type: "list",
+        title: "What gets detected automatically",
+        items: [
+          "Semester labels — text like '100L First Semester' or '2nd Semester' is " +
+          "recognised and used as the semester name.",
+          "Course codes — standard Nigerian course codes like MTH101, ENG201 are " +
+          "detected even if other text appears on the same row.",
+          "Credit units — parsed from the credit unit or CU column.",
+          "Grades — letter grades (A, B, C...) and numeric scores (0–100) are both accepted.",
+          "GPA printed on the transcript — stored for your reference, not used " +
+          "in place of the calculated GPA.",
+        ],
+      },
+      {
+        type: "warning",
+        content:
+          "Only digital (text-based) PDFs are supported. A scanned transcript " +
+          "saved as PDF is an image inside a PDF container — the parser cannot " +
+          "read images. If your file is a scan, use the paste method instead " +
+          "after manually typing the results.",
+      },
+      {
+        type: "tip",
+        content:
+          "To get a digital PDF from your student portal: open your result page " +
+          "in a browser, then use File > Print and choose 'Save as PDF' or " +
+          "'Microsoft Print to PDF' as the printer. Do not scan a printed paper " +
+          "result — that produces an image, not a text PDF. A properly generated " +
+          "PDF is usually under 500 KB.",
+      },
+      {
+        type: "list",
+        title: "Excel column requirements",
+        items: [
+          "The spreadsheet must have a column for course code (or 'Course').",
+          "It must have a column for credit units (CU, Credit Hours, or Units).",
+          "It must have a column for grade (letter) or score (number).",
+          "Column headers are detected automatically — the exact name does not need " +
+          "to match perfectly, but it should be recognisable.",
+          "Data can start on any row within the first 20 rows.",
+        ],
+      },
+    ],
+  },
+
+
+  // ── 5. Grade Projections Guide ───────────────────────────────────────────────
+  {
+    id:        "grade-projections",
+    title:     "Using Grade Projections",
+    category:  "features",
+    shortDesc: "How the target CGPA calculator and grade mix work.",
+    keywords:  [
+      "projection", "target cgpa", "grade mix", "required gpa", "remaining semesters",
+      "what if", "forward simulation", "feasibility", "achievable",
+    ],
+    sections: [
+      {
+        type: "text",
+        content:
+          "The Grade Projections panel has two calculators. The first works " +
+          "backwards from a target CGPA to tell you what GPA you need each " +
+          "remaining semester. The second works forward to show you what your " +
+          "CGPA will be if you achieve a specific GPA next semester.",
+      },
+      {
+        type: "steps",
+        title: "Backward projection — finding your required GPA",
+        items: [
+          "Enter your target CGPA (e.g. 4.50 for First Class on the 5.0 scale).",
+          "Enter the number of semesters you have remaining before graduation.",
+          "Enter the estimated credit units you will take each semester (18 is typical).",
+          "The required GPA per semester appears immediately.",
+          "The feasibility rating tells you how realistic that GPA is.",
+          "The Grade Mix section shows roughly what proportion of As, Bs, Cs " +
+          "would achieve that GPA.",
+        ],
+      },
+      {
+        type: "text",
+        content:
+          "The Grade Mix is calculated from your institution's grade table. " +
+          "For example, if you need a 3.80 GPA on a 5.0 scale, the mix shows " +
+          "roughly 80% Bs and 20% Cs — or about 5 Bs and 1 C in a typical " +
+          "6-course semester. Two alternatives may appear when different grade " +
+          "combinations achieve the same result.",
+      },
+      {
+        type: "tip",
+        content:
+          "The course count estimate assumes an average of 3 credit units per " +
+          "course. If your courses carry more or fewer units on average, the " +
+          "percentage split is still accurate — only the count estimate changes.",
+      },
+      {
+        type: "steps",
+        title: "Forward simulation — What If?",
+        items: [
+          "Enter the GPA you expect to achieve next semester.",
+          "Leave the CU field blank to use your estimated CU from above, or " +
+          "enter a specific number.",
+          "Your projected CGPA after that semester appears instantly, along " +
+          "with the change from your current CGPA and your new degree class.",
+        ],
+      },
+      {
+        type: "list",
+        title: "Feasibility ratings",
+        items: [
+          "Achievable — the required GPA is 75% or less of the scale maximum. " +
+          "Consistent performance gets you there.",
+          "Challenging — the required GPA is between 75% and 90% of the scale max. " +
+          "Strong performance is needed every semester.",
+          "Very Challenging — the required GPA is above 90% of the scale max. " +
+          "Near-perfect results are needed in every course.",
+          "Not Achievable — even with the maximum grade in every course for every " +
+          "remaining semester, the target cannot be reached.",
+        ],
+      },
+      {
+        type: "warning",
+        content:
+          "Projections are based on your estimated credit load per semester. If " +
+          "your actual credit load changes significantly, re-run the calculation " +
+          "with the updated number.",
+      },
+    ],
+  },
+
+
+  // ── 6. Export Guide ──────────────────────────────────────────────────────────
   {
     id:        "export-guide",
     title:     "Exporting Your Results",
@@ -268,7 +419,7 @@ export const HELP_TOPICS = [
   },
 
 
-  // ── 5. Grading System Guide ──────────────────────────────────────────────────
+  // ── 7. Grading System Guide ──────────────────────────────────────────────────
   {
     id:        "grading-systems",
     title:     "Nigerian University Grading Systems",
@@ -364,14 +515,17 @@ export const HELP_TOPICS = [
   },
 
 
-  // ── 6. FAQ ───────────────────────────────────────────────────────────────────
+  // ── 8. FAQ ───────────────────────────────────────────────────────────────────
   {
     id:        "faq",
     title:     "Frequently Asked Questions",
     category:  "reference",
     shortDesc: "Answers to the most common questions about CGPA and this app.",
-    keywords:  ["faq", "question", "carryover", "improve", "fail", "retake",
-                "first class", "borderline", "credit", "supplementary", "quality points"],
+    keywords:  [
+      "faq", "question", "carryover", "improve", "fail", "retake",
+      "first class", "borderline", "credit", "supplementary", "quality points",
+      "excel", "pdf", "grade mix", "offline", "history", "cache",
+    ],
     sections: [
       {
         type: "faq",
@@ -450,7 +604,7 @@ export const HELP_TOPICS = [
                "CGPA, remaining semesters, and expected credit load. Use the Projection " +
                "Panel in the app: enter 3.50 as your target (5.0 scale), your remaining " +
                "semesters, and your estimated credit units per semester. The app will " +
-               "calculate precisely what you need each semester.",
+               "calculate precisely what you need each semester and show the grade mix.",
           },
           {
             q: "Can I improve my CGPA significantly in final year?",
@@ -536,12 +690,50 @@ export const HELP_TOPICS = [
                "from the Export menu.",
           },
           {
+            q: "Can I import my results from an Excel spreadsheet or PDF file?",
+            a: "Yes. The import modal has a 'Import from file' tab that accepts Excel " +
+               "spreadsheets (.xlsx and .xls) and digital PDF transcripts. The parser " +
+               "detects semester blocks and course data automatically. Only digital " +
+               "(text-based) PDFs work — scanned image transcripts cannot be parsed. " +
+               "To get a digital PDF from your student portal, use your browser's " +
+               "File > Print > Save as PDF option on the results page.",
+          },
+          {
+            q: "What is the Grade Mix suggestion in the Projection panel?",
+            a: "When the Projection panel calculates the GPA you need per remaining " +
+               "semester, it also shows the approximate grade distribution needed to " +
+               "hit that GPA. For example, if you need a GPA of 3.80 on a 5.0 scale, " +
+               "the mix shows roughly 80% Bs and 20% Cs — or about 5 Bs and 1 C in " +
+               "a typical 6-course semester. This gives you a concrete study target " +
+               "instead of an abstract number. The calculation uses your institution's " +
+               "actual grade table and assumes about 3 credit units per course on average.",
+          },
+          {
+            q: "Will the Academic Assistant remember my answers from previous sessions when I go offline?",
+            a: "Yes. Every time the Assistant successfully answers a question online, " +
+               "that question and answer are stored privately in your browser. When you " +
+               "later ask a similar question without internet access, the app searches " +
+               "those stored answers and displays the closest match, labelled 'From your " +
+               "history'. The more you use the assistant online, the more helpful it " +
+               "becomes offline. Your stored answers are never sent anywhere — they are " +
+               "only used for your own offline access.",
+          },
+          {
+            q: "How do I get a digital PDF of my transcript from my student portal?",
+            a: "Open your result or transcript page in a browser, then use File > Print " +
+               "and choose 'Save as PDF', 'Print to PDF', or 'Microsoft Print to PDF' " +
+               "as the destination printer. Do not photograph or scan a printed result " +
+               "sheet — that creates an image file, not a digital PDF, and cannot be " +
+               "parsed. A correctly generated digital PDF is typically under 500 KB.",
+          },
+          {
             q: "Is the AI chat assistant always available?",
-            a: "No. The Academic Assistant requires an internet connection and a " +
-               "configured API key. If it is unavailable, the app falls back to a " +
-               "built-in knowledge base that can answer common questions about GPA, " +
-               "CGPA, carryovers, and borderline status. All calculation features " +
-               "work fully offline regardless of the assistant's availability.",
+            a: "No. The Academic Assistant requires an internet connection. If it is " +
+               "unavailable, the app uses two offline fallbacks in order: first, it " +
+               "searches answers from your past online sessions (stored in your browser); " +
+               "second, it checks a built-in knowledge base covering GPA, CGPA, " +
+               "carryovers, borderline status, and more. All calculation features work " +
+               "fully offline regardless of the assistant's availability.",
           },
           {
             q: "Can I use this app on my phone?",
@@ -560,13 +752,6 @@ export const HELP_TOPICS = [
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-/**
- * Filters topics by a search query against title, shortDesc, and keywords.
- * Returns all topics if query is empty.
- *
- * @param {string} query
- * @returns {Array}
- */
 export function searchTopics(query) {
   if (!query || query.trim() === "") return HELP_TOPICS;
   const q = query.trim().toLowerCase();
@@ -575,7 +760,6 @@ export function searchTopics(query) {
     if (topic.title.toLowerCase().includes(q))     return true;
     if (topic.shortDesc.toLowerCase().includes(q)) return true;
     if (topic.keywords?.some((k) => k.includes(q))) return true;
-    // Deep search in section content
     return topic.sections?.some((section) => {
       if (section.content && String(section.content).toLowerCase().includes(q)) return true;
       if (Array.isArray(section.items)) {

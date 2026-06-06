@@ -1,22 +1,16 @@
 // ── ChatMessage.jsx ───────────────────────────────────────────────────────────
 // Renders a single message in the chat history.
 //
-// Handles four states:
+// Handles five states:
 //   1. User message       — right-aligned, primary tint
-//   2. Assistant message  — left-aligned, surface card
-//   3. Knowledge base     — assistant variant + source indicator
-//   4. Error / pending    — warning card with retry + dismiss controls
-//
-// Message content is split on double-newline to render proper paragraphs.
-// Single newlines within a paragraph become <br /> elements.
-//
-// CSS lives in ImprovementChat.css (Batch 23).
+//   2. Assistant (API)    — left-aligned, surface card
+//   3. Knowledge base     — assistant variant + "Knowledge base" tag
+//   4. QA cache           — assistant variant + "From your history" tag
+//   5. Error / pending    — warning card with retry + dismiss controls
 
 
 import React, { useState } from "react";
 
-
-// ── Main component ────────────────────────────────────────────────────────────
 
 export default function ChatMessage({ message, onRetry, onDismiss }) {
   const {
@@ -27,6 +21,7 @@ export default function ChatMessage({ message, onRetry, onDismiss }) {
     isError,
     isPending,
     isFromKnowledgeBase,
+    isFromCache,
     retryPayload,
   } = message;
 
@@ -37,17 +32,15 @@ export default function ChatMessage({ message, onRetry, onDismiss }) {
       className={[
         "chat-message",
         `chat-message--${isUser ? "user" : "assistant"}`,
-        isError    ? "chat-message--error"   : "",
-        isPending  ? "chat-message--pending" : "",
+        isError   ? "chat-message--error"   : "",
+        isPending ? "chat-message--pending" : "",
         isFromKnowledgeBase ? "chat-message--kb" : "",
+        isFromCache         ? "chat-message--cache" : "",
       ].filter(Boolean).join(" ")}
       aria-label={isUser ? "Your message" : "Assistant response"}
     >
       {isUser ? (
-        <UserMessage
-          content={content}
-          timestamp={timestamp}
-        />
+        <UserMessage content={content} timestamp={timestamp} />
       ) : (
         <AssistantMessage
           id={id}
@@ -56,6 +49,7 @@ export default function ChatMessage({ message, onRetry, onDismiss }) {
           isError={isError}
           isPending={isPending}
           isFromKnowledgeBase={isFromKnowledgeBase}
+          isFromCache={isFromCache}
           retryPayload={retryPayload}
           onRetry={onRetry}
           onDismiss={onDismiss}
@@ -93,6 +87,7 @@ function AssistantMessage({
   isError,
   isPending,
   isFromKnowledgeBase,
+  isFromCache,
   retryPayload,
   onRetry,
   onDismiss,
@@ -133,15 +128,9 @@ function AssistantMessage({
               type="button"
             >
               {retrying ? (
-                <>
-                  <IconSpinnerSmall />
-                  Retrying…
-                </>
+                <><IconSpinnerSmall /> Retrying…</>
               ) : (
-                <>
-                  <IconRetry />
-                  Retry
-                </>
+                <><IconRetry /> Retry</>
               )}
             </button>
 
@@ -163,7 +152,7 @@ function AssistantMessage({
     );
   }
 
-  // Normal assistant message (AI or knowledge base)
+  // Normal assistant message (API, QA cache, or knowledge base)
   return (
     <div className="assistant-message">
       <div className="assistant-message__header">
@@ -171,7 +160,23 @@ function AssistantMessage({
           <IconAssistantSmall />
         </span>
         <span className="assistant-message__name">Academic Assistant</span>
-        {isFromKnowledgeBase && (
+
+        {/* QA cache tag — shown when answer comes from saved past sessions */}
+        {isFromCache && (
+          <span
+            className="assistant-message__kb-tag"
+            style={{
+              background: "var(--color-primary-light)",
+              color:      "#ffffff",
+            }}
+            title="This answer was saved from a previous session when you had internet access."
+          >
+            From your history
+          </span>
+        )}
+
+        {/* Knowledge base tag — shown for hardcoded fallback answers */}
+        {isFromKnowledgeBase && !isFromCache && (
           <span
             className="assistant-message__kb-tag"
             title="This answer comes from the built-in knowledge base. Connect to the internet for a personalised response."
@@ -189,7 +194,15 @@ function AssistantMessage({
         {timestamp && (
           <span className="message-time">{formatTime(timestamp)}</span>
         )}
-        {isFromKnowledgeBase && (
+
+        {isFromCache && (
+          <span className="assistant-message__kb-note">
+            <IconInfo />
+            Saved answer. Connect for a live personalised response.
+          </span>
+        )}
+
+        {isFromKnowledgeBase && !isFromCache && (
           <span className="assistant-message__kb-note">
             <IconInfo />
             Connect to the internet for personalised advice.
@@ -203,15 +216,9 @@ function AssistantMessage({
 
 // ── Content renderer ──────────────────────────────────────────────────────────
 
-/**
- * Splits content on double-newline to create paragraphs.
- * Preserves single-newlines as <br/> within paragraphs.
- */
 function renderContent(text) {
   if (!text) return null;
-
   const paragraphs = text.split(/\n\n+/);
-
   return paragraphs.map((para, pIdx) => {
     const lines = para.split("\n");
     return (

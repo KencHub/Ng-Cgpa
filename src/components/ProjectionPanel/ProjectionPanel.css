@@ -124,24 +124,25 @@
 }
 
 .proj-input__tooltip-icon {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   color: var(--color-text-muted);
   cursor: help;
+  flex-shrink: 0;
   transition: color var(--transition-fast);
 }
 
-.proj-input__tooltip-icon:hover {
+.proj-input__tooltip-icon:hover,
+.proj-input__tooltip-icon:focus {
   color: var(--color-text-secondary);
+  outline: none;
 }
 
 .proj-input__field {
-  /* Extends .input-base from App.css */
   text-align: center;
   font-weight: var(--font-weight-medium);
 }
 
-/* Remove number spinners */
 .proj-input__field::-webkit-inner-spin-button,
 .proj-input__field::-webkit-outer-spin-button {
   -webkit-appearance: none;
@@ -303,6 +304,75 @@
 }
 
 
+/* ── Grade mix hint ──────────────────────────────────────────────────────────── */
+
+.grade-mix-hint {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.grade-mix-hint__label {
+  color: var(--color-text-muted);
+}
+
+.grade-mix-hint__entry {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.grade-mix-hint__or {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: var(--font-weight-medium);
+  margin-top: var(--space-1);
+}
+
+.grade-mix-hint__pills {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.grade-mix-hint__pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px var(--space-2);
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+}
+
+.grade-mix-hint__pill--hi {
+  background-color: var(--color-success-light);
+  color: var(--color-success);
+}
+
+.grade-mix-hint__pill--lo {
+  background-color: var(--color-surface-3);
+  color: var(--color-text-secondary);
+}
+
+.grade-mix-hint__sep {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.grade-mix-hint__count {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+
 /* ── Forward simulator result ────────────────────────────────────────────────── */
 
 .forward-prompt {
@@ -370,7 +440,9 @@
   line-height: var(--line-height-relaxed);
 }
 
-/* ── Fixed portal tooltip (escapes overflow:hidden) ──────────────────────── */
+
+/* ── Fixed portal tooltip ────────────────────────────────────────────────────── */
+
 .proj-tooltip-fixed {
   position: fixed;
   z-index: 9999;
@@ -384,20 +456,4 @@
   max-width: 220px;
   white-space: normal;
   pointer-events: none;
-}
-
-/* ── Tooltip icon (replaces .tooltip-anchor pattern) ─────────────────────── */
-.proj-input__tooltip-icon {
-  display: inline-flex;
-  align-items: center;
-  color: var(--color-text-muted);
-  cursor: help;
-  flex-shrink: 0;
-  transition: color var(--transition-fast);
-}
-
-.proj-input__tooltip-icon:hover,
-.proj-input__tooltip-icon:focus {
-  color: var(--color-text-secondary);
-  outline: none;
 }
