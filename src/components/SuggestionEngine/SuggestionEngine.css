@@ -1,0 +1,197 @@
+/* ── SuggestionEngine container ──────────────────────────────────────────────── */
+
+.suggestion-engine {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+
+/* ── Suggestion banner base ──────────────────────────────────────────────────── */
+
+.suggestion-banner {
+  display: grid;
+  grid-template-columns: 20px 1fr 28px;
+  align-items: start;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  border-left: 3px solid transparent;
+  animation: bannerEnter 220ms ease both;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Subtle shimmer line at top of banner (decorative) */
+.suggestion-banner::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.12;
+}
+
+
+/* ── Type variants ───────────────────────────────────────────────────────────── */
+
+.suggestion-banner--info {
+  background-color: #EEF2FF;
+  border-left-color: #6366F1;
+  color: #3730A3;
+}
+
+.suggestion-banner--warning {
+  background-color: var(--color-warning-light);
+  border-left-color: var(--color-warning);
+  color: var(--color-warning);
+}
+
+.suggestion-banner--danger {
+  background-color: var(--color-danger-light);
+  border-left-color: var(--color-danger);
+  color: var(--color-danger);
+}
+
+.suggestion-banner--success {
+  background-color: var(--color-success-light);
+  border-left-color: var(--color-success);
+  color: var(--color-success);
+}
+
+
+/* ── Icon ────────────────────────────────────────────────────────────────────── */
+
+.suggestion-banner__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+  /* Inherits currentColor from the banner type variant */
+}
+
+
+/* ── Message ─────────────────────────────────────────────────────────────────── */
+
+.suggestion-banner__message {
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-relaxed);
+  /* Keep message readable — slightly darker than the icon/border colour */
+  color: var(--color-text-primary);
+  min-width: 0;
+}
+
+/* Tint the message slightly toward the banner colour on danger/warning */
+.suggestion-banner--danger .suggestion-banner__message {
+  color: #7F1D1D; /* dark red */
+}
+
+.suggestion-banner--warning .suggestion-banner__message {
+  color: #78350F; /* dark amber */
+}
+
+.suggestion-banner--info .suggestion-banner__message {
+  color: #1E1B4B; /* dark indigo */
+}
+
+.suggestion-banner--success .suggestion-banner__message {
+  color: #14532D; /* dark green */
+}
+
+
+/* ── Dismiss button ──────────────────────────────────────────────────────────── */
+
+.suggestion-banner__dismiss {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  color: currentColor;
+  opacity: 0.5;
+  flex-shrink: 0;
+  transition: opacity var(--transition-fast),
+              background-color var(--transition-fast);
+  margin-left: auto;
+  /* Align to first line of text in multi-line banners */
+  align-self: start;
+  margin-top: -2px;
+}
+
+.suggestion-banner__dismiss:hover {
+  opacity: 1;
+  background-color: rgba(0, 0, 0, 0.08);
+}
+
+.suggestion-banner__dismiss:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 1px;
+  opacity: 1;
+}
+
+
+/* ── Entry animation ─────────────────────────────────────────────────────────── */
+
+@keyframes bannerEnter {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+
+/* ── Exit animation ──────────────────────────────────────────────────────────── */
+
+.suggestion-banner--dismissing {
+  animation: bannerExit 200ms ease forwards;
+  pointer-events: none;
+}
+
+@keyframes bannerExit {
+  0% {
+    opacity: 1;
+    transform: translateX(0) scaleY(1);
+    max-height: 200px;
+    padding-top: var(--space-3);
+    padding-bottom: var(--space-3);
+    margin-bottom: var(--space-2);
+  }
+  40% {
+    opacity: 0;
+    transform: translateX(8px) scaleY(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(8px) scaleY(0);
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    margin-bottom: 0;
+  }
+}
+
+
+/* ── Responsive ──────────────────────────────────────────────────────────────── */
+
+@media (max-width: 479px) {
+  .suggestion-banner {
+    padding: var(--space-3);
+    gap: var(--space-2);
+    grid-template-columns: 18px 1fr 24px;
+  }
+
+  .suggestion-banner__message {
+    font-size: var(--font-size-xs);
+  }
+}

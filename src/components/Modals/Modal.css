@@ -1,0 +1,973 @@
+/* ── Modal.css ────────────────────────────────────────────────────────────────
+   Specific styles for all portal modals:
+     InstitutionModal     (Batch 24)
+     ImportModal          (Batch 24)
+     ClearConfirmDialog   (Batch 25)
+
+   Base .modal / .backdrop styles live in App.css (Batch 3).
+   This file only adds component-specific overrides and inner layouts.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   INSTITUTION MODAL
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+.institution-modal {
+  max-width: 620px;
+  max-height: 92dvh;
+}
+
+.institution-modal__body {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+
+/* ── Sticky search ───────────────────────────────────────────────────────────── */
+
+.institution-modal__search-wrap {
+  padding: var(--space-4) var(--space-5);
+  background-color: #fff;
+  border-bottom: 1px solid var(--color-border);
+  position: sticky;
+  top: 0;
+  z-index: var(--z-base);
+}
+
+
+/* ── Institution list ────────────────────────────────────────────────────────── */
+
+.institution-modal__list {
+  max-height: 360px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border-bottom: 1px solid var(--color-border);
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-strong) transparent;
+}
+
+.institution-modal__list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.institution-modal__list::-webkit-scrollbar-thumb {
+  background-color: var(--color-border-strong);
+  border-radius: var(--radius-pill);
+}
+
+.institution-modal__no-results {
+  padding: var(--space-6) var(--space-5);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+
+/* ── Details section ─────────────────────────────────────────────────────────── */
+
+.institution-modal__details {
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  background-color: var(--color-surface);
+}
+
+
+
+
+/* ── Detail header row ───────────────────────────────────────────────────────── */
+
+.inst-detail__header {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.inst-detail__logo {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.inst-detail__meta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.inst-detail__name {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  line-height: var(--line-height-tight);
+}
+
+.inst-detail__tags {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.inst-detail__location {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.inst-detail__type-tag {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: var(--radius-pill);
+  font-size: 9px;
+  font-weight: var(--font-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background-color: var(--color-surface-3);
+  color: var(--color-text-secondary);
+}
+
+
+/* ── Website link ────────────────────────────────────────────────────────────── */
+/* display:flex (not inline-flex) so it can be aligned with align-self:flex-start
+   without the subtleties of inline formatting context.
+   inst-detail__website-icon wraps the SVG so both children are <span> elements
+   — a bare SVG as a direct flex child can be forced to display:block on Android
+   Chrome, which breaks the row. */
+
+.inst-detail__website-link {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-primary-light);
+  text-decoration: none;
+  padding: 4px 8px 4px 6px;
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  transition: background-color var(--transition-fast),
+              color var(--transition-fast);
+}
+
+.inst-detail__website-link:hover {
+  background-color: var(--color-surface-3);
+  color: var(--color-primary);
+}
+
+/* flex-shrink:0 + line-height:0 eliminates the extra height SVGs pick up
+   from line-height inside an inline formatting context. */
+.inst-detail__website-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  line-height: 0;
+  color: var(--color-primary-light);
+}
+
+.inst-detail__website-link:hover .inst-detail__website-icon {
+  color: var(--color-primary);
+}
+
+.inst-detail__website-url {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 320px;
+}
+
+
+/* ── UI legacy scale toggle ──────────────────────────────────────────────────── */
+
+.inst-detail__legacy-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background-color: var(--color-warning-light);
+  border: 1px solid rgba(188, 108, 37, 0.25);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  line-height: var(--line-height-relaxed);
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.inst-detail__legacy-toggle:hover {
+  background-color: #fde8c8;
+}
+
+.inst-detail__legacy-checkbox {
+  flex-shrink: 0;
+  margin-top: 2px;
+  width: 15px;
+  height: 15px;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+}
+
+
+/* ── NUC note ────────────────────────────────────────────────────────────────── */
+/* display:flex so the circle-i icon and the text stay on the same row.
+   The ℹ Unicode codepoint (U+2139) renders inconsistently on Android fonts,
+   appearing as a bare "i" with no circle. We build the circle in CSS instead. */
+
+.inst-detail__nuc-note {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background-color: var(--color-surface-2);
+  border-radius: var(--radius-sm);
+  border-left: 2px solid var(--color-border-strong);
+}
+
+.inst-detail__nuc-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  min-width: 16px;
+  border-radius: 50%;
+  background-color: var(--color-text-muted);
+  color: #fff;
+  font-size: 10px;
+  font-style: italic;
+  font-weight: 700;
+  line-height: 1;
+  margin-top: 1px;
+}
+
+.inst-detail__nuc-text {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  line-height: var(--line-height-relaxed);
+}
+
+
+/* ── Collapsible sections ────────────────────────────────────────────────────── */
+/* Uses a <button> toggle (inst-detail__section-toggle) instead of
+   <details>/<summary>. Android Chrome still renders its native ► marker
+   on <summary> elements even when display:flex + list-style:none +
+   ::marker suppression are all applied. The button approach is fully
+   reliable across all target browsers. */
+
+.inst-detail__section {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.inst-detail__section-toggle {
+  /* Reset button defaults */
+  appearance: none;
+  -webkit-appearance: none;
+  border: none;
+  background: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+
+  /* Layout */
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 10px var(--space-4);
+  background-color: var(--color-surface-2);
+  color: var(--color-text-primary);
+  transition: background-color var(--transition-fast);
+}
+
+.inst-detail__section-toggle:hover {
+  background-color: var(--color-surface-3);
+}
+
+/* Visually hide the native focus ring; keyboard users get it via outline */
+.inst-detail__section-toggle:focus-visible {
+  outline: 2px solid var(--color-primary-light);
+  outline-offset: -2px;
+}
+
+/* Chevron icon — transitions from pointing right (►) to pointing down (▼) */
+.inst-detail__chevron {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+  transition: transform 0.18s ease;
+  /* Prevent the SVG inside from receiving pointer events so clicks always
+     register on the button, not the SVG path. */
+  pointer-events: none;
+}
+
+.inst-detail__chevron--open {
+  transform: rotate(90deg);
+}
+
+.inst-detail__section-title {
+  flex: 1;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+  /* Prevent text from being selectable during rapid taps */
+  user-select: none;
+}
+
+.inst-detail__pass-mark {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-muted);
+  background-color: var(--color-surface-3);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.inst-detail__section-body {
+  border-top: 1px solid var(--color-border);
+}
+
+
+/* ── Notes ───────────────────────────────────────────────────────────────────── */
+
+.inst-detail__notes {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-relaxed);
+  padding: var(--space-3) var(--space-4);
+  background-color: var(--color-surface-2);
+  border-radius: var(--radius-sm);
+  border-left: 2px solid var(--color-border);
+  margin: 0;
+}
+
+
+/* ── Grade table ─────────────────────────────────────────────────────────────── */
+
+.grade-table {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.grade-table__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+
+.grade-table__th {
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-label);
+  color: var(--color-text-muted);
+  text-align: left;
+  background-color: var(--color-surface-2);
+  border-bottom: 1px solid var(--color-border);
+  white-space: nowrap;
+}
+
+.grade-table__row {
+  border-bottom: 1px solid var(--color-border);
+  transition: background-color var(--transition-fast);
+}
+
+.grade-table__row:last-child {
+  border-bottom: none;
+}
+
+.grade-table__row:hover {
+  background-color: var(--color-surface);
+}
+
+.grade-table__td {
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-text-primary);
+  vertical-align: middle;
+}
+
+.grade-table__td--letter {
+  width: 52px;
+}
+
+.grade-table__td--range {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.grade-table__td--points {
+  font-weight: var(--font-weight-bold);
+  font-variant-numeric: tabular-nums;
+}
+
+.grade-table__td--remark {
+  color: var(--color-text-secondary);
+}
+
+/* Grade letter badge */
+.grade-table__letter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+}
+
+.grade-table__letter--high {
+  background-color: var(--color-success-light);
+  color: var(--color-success);
+}
+
+.grade-table__letter--mid {
+  background-color: var(--color-warning-light);
+  color: var(--color-warning);
+}
+
+.grade-table__letter--low {
+  background-color: var(--color-surface-3);
+  color: var(--color-text-secondary);
+}
+
+.grade-table__letter--fail {
+  background-color: var(--color-danger-light);
+  color: var(--color-danger);
+}
+
+
+/* ── Classification table ────────────────────────────────────────────────────── */
+
+.class-table {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Left accent border communicates class tier visually without extra markup.
+   data-rank is set by the sorted index (0 = highest class = first class). */
+.class-table__row {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  border-left: 3px solid transparent;
+  transition: background-color var(--transition-fast);
+}
+
+.class-table__row:last-child {
+  border-bottom: none;
+}
+
+.class-table__row:hover {
+  background-color: var(--color-surface);
+}
+
+/* Tier colors by sorted rank */
+.class-table__row[data-rank="0"] { border-left-color: var(--color-success);        }
+.class-table__row[data-rank="1"] { border-left-color: var(--color-primary);        }
+.class-table__row[data-rank="2"] { border-left-color: var(--color-warning);        }
+.class-table__row[data-rank="3"] { border-left-color: #7B4F12;                     }
+.class-table__row[data-rank="4"] { border-left-color: var(--color-text-secondary); }
+.class-table__row[data-rank="5"] { border-left-color: var(--color-danger);         }
+
+.class-table__range {
+  width: 90px;
+  min-width: 90px;
+  flex-shrink: 0;
+  padding-right: var(--space-3);
+  padding-top: 2px;
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  font-size: var(--font-size-xs);
+}
+
+/* display:block is used deliberately instead of flex-direction:column.
+   On some Android Chrome builds, flex-direction:column on a div inside a
+   flex row does not apply correctly when the parent chain involves certain
+   cascade overrides, causing children to flow inline. display:block on the
+   container guarantees the label occupies a full block line, which pushes
+   the short badge to the next line without any flex dependency. */
+.class-table__info {
+  flex: 1;
+  min-width: 0;
+  display: block;
+}
+
+/* display:block forces this to its own line regardless of what follows it.
+   This is the fix for "First Class HonoursFirst Class" concatenation. */
+.class-table__label {
+  display: block;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  line-height: 1.4;
+}
+
+/* display:inline-block keeps the badge auto-width (not stretching to full
+   column width like display:block would). margin-top separates it from the
+   label above. */
+.class-table__short {
+  display: inline-block;
+  margin-top: 4px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-muted);
+  background-color: var(--color-surface-3);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   IMPORT MODAL
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+.import-modal {
+  max-width: 560px;
+}
+
+.import-modal__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.import-modal__no-inst {
+  padding: var(--space-3) var(--space-4);
+  background-color: var(--color-warning-light);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  color: var(--color-warning);
+  line-height: var(--line-height-relaxed);
+}
+
+.import-modal__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.import-modal__label {
+  color: var(--color-text-secondary);
+}
+
+.import-modal__select {
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M2 4l4 4 4-4' stroke='%239A9A9A' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--space-3) center;
+  padding-right: var(--space-8);
+  cursor: pointer;
+}
+
+.import-modal__paste-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.import-modal__guide-toggle {
+  font-size: var(--font-size-xs);
+  color: var(--color-primary-light);
+  font-weight: var(--font-weight-medium);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  white-space: nowrap;
+  transition: color var(--transition-fast);
+}
+
+.import-modal__guide-toggle:hover {
+  color: var(--color-primary-hover);
+  text-decoration: underline;
+}
+
+.import-modal__guide {
+  background-color: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--font-size-xs);
+  font-family: "Menlo", "Consolas", "Monaco", monospace;
+  line-height: 1.7;
+  color: var(--color-text-secondary);
+  white-space: pre-wrap;
+  overflow-x: auto;
+  max-height: 180px;
+}
+
+.import-modal__textarea {
+  width: 100%;
+  min-height: 120px;
+  padding: var(--space-3);
+  background-color: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-family: "Menlo", "Consolas", "Monaco", monospace;
+  line-height: 1.7;
+  color: var(--color-text-primary);
+  resize: vertical;
+  outline: none;
+  transition: border-color var(--transition-fast),
+              box-shadow var(--transition-fast),
+              background-color var(--transition-fast);
+}
+
+.import-modal__textarea:focus {
+  background-color: #fff;
+  border-color: var(--color-primary-light);
+  box-shadow: 0 0 0 3px rgba(45, 106, 79, 0.10);
+}
+
+.import-modal__textarea::placeholder {
+  color: var(--color-text-muted);
+}
+
+.import-modal__textarea:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.import-modal__success {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background-color: var(--color-success-light);
+  color: var(--color-success);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+}
+
+
+/* ── Import preview ──────────────────────────────────────────────────────────── */
+
+.import-preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.import-preview__summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background-color: var(--color-surface-2);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.import-preview__badge {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+}
+
+.import-preview__badge--good {
+  background-color: var(--color-success-light);
+  color: var(--color-success);
+}
+
+.import-preview__badge--empty {
+  background-color: var(--color-surface-3);
+  color: var(--color-text-muted);
+}
+
+.import-preview__badge--skip {
+  background-color: var(--color-warning-light);
+  color: var(--color-warning);
+}
+
+.import-preview__courses {
+  display: flex;
+  flex-direction: column;
+  max-height: 200px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.import-preview__course {
+  display: grid;
+  grid-template-columns: 1fr 52px 52px 46px 60px;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--font-size-sm);
+  transition: background-color var(--transition-fast);
+}
+
+.import-preview__course:last-child {
+  border-bottom: none;
+}
+
+.import-preview__course:hover {
+  background-color: var(--color-surface);
+}
+
+.import-preview__course--fail {
+  background-color: rgba(193, 18, 31, 0.025);
+}
+
+.import-preview__course-name {
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.import-preview__course-cu,
+.import-preview__course-score,
+.import-preview__course-qp {
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-secondary);
+  text-align: right;
+  font-size: var(--font-size-xs);
+}
+
+.import-preview__course-grade {
+  text-align: center;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+}
+
+.import-preview__course-grade--fail {
+  color: var(--color-danger);
+}
+
+.import-preview__skipped {
+  border-top: 1px solid var(--color-border);
+}
+
+.import-preview__skipped-summary {
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-warning);
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+  background-color: var(--color-warning-light);
+  transition: background-color var(--transition-fast);
+}
+
+.import-preview__skipped-summary:hover {
+  background-color: #fde8c8;
+}
+
+.import-preview__skipped-summary::-webkit-details-marker { display: none; }
+.import-preview__skipped-summary::marker               { display: none; }
+
+.import-preview__skipped-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  max-height: 140px;
+  overflow-y: auto;
+}
+
+.import-preview__skip-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.import-preview__skip-line {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.import-preview__skip-line code {
+  background-color: var(--color-surface-3);
+  border-radius: var(--radius-sm);
+  padding: 1px 4px;
+  font-family: "Menlo", "Consolas", "Monaco", monospace;
+}
+
+.import-preview__skip-reason {
+  font-size: var(--font-size-xs);
+  color: var(--color-danger);
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   CLEAR CONFIRM DIALOG
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+.clear-confirm {
+  max-width: 440px;
+}
+
+.clear-confirm__header {
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.clear-confirm__icon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.clear-confirm__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.clear-confirm__lead {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+}
+
+.clear-confirm__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background-color: var(--color-danger-light);
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--color-danger);
+}
+
+.clear-confirm__list li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  line-height: var(--line-height-relaxed);
+}
+
+.clear-confirm__bullet {
+  color: var(--color-danger);
+  font-weight: var(--font-weight-bold);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.clear-confirm__safe {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-relaxed);
+}
+
+.clear-confirm__safe-icon {
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.clear-confirm__tip {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  line-height: var(--line-height-relaxed);
+  padding: var(--space-2) var(--space-3);
+  background-color: var(--color-surface-2);
+  border-radius: var(--radius-sm);
+}
+
+.clear-confirm__footer {
+  gap: var(--space-3);
+}
+
+.clear-confirm__danger-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  background-color: var(--color-danger);
+  color: #fff;
+  border: 1px solid transparent;
+  padding: 0 var(--space-5);
+  transition: background-color var(--transition-fast);
+}
+
+.clear-confirm__danger-btn:hover {
+  background-color: #9B0E18;
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 599px) {
+  .institution-modal,
+  .import-modal {
+    max-width: calc(100% - var(--space-4));
+  }
+
+  .institution-modal__details {
+    padding: var(--space-4);
+    gap: var(--space-3);
+  }
+
+  .inst-detail__website-url {
+    max-width: 200px;
+  }
+
+  .grade-table__th--remark,
+  .grade-table__td--remark {
+    display: none;
+  }
+
+  .import-preview__course {
+    grid-template-columns: 1fr 44px 44px 38px;
+  }
+
+  .import-preview__course-qp {
+    display: none;
+  }
+
+  .clear-confirm {
+    max-width: calc(100% - var(--space-4));
+  }
+}

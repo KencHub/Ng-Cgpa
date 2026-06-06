@@ -1,0 +1,403 @@
+/* ── InstitutionSelector ─────────────────────────────────────────────────────── */
+
+.inst-selector {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
+
+/* ── Trigger button ──────────────────────────────────────────────────────────── */
+
+.inst-selector__trigger {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  flex: 0 1 auto;
+  padding: var(--space-1) var(--space-2);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  text-align: left;
+  transition: background-color var(--transition-fast),
+              border-color var(--transition-fast);
+  height: 40px;
+  gap: var(--space-2);
+  color: inherit;
+}
+
+.inst-selector__trigger:hover {
+  background-color: var(--color-surface-2);
+  border-color: var(--color-border);
+}
+
+.inst-selector__trigger:focus-visible {
+  outline: 2px solid var(--color-primary-light);
+  outline-offset: 1px;
+}
+
+.inst-selector__trigger--empty {
+  border-color: var(--color-border);
+  border-style: dashed;
+  max-width: 260px;
+}
+
+.inst-selector__trigger--empty:hover {
+  border-style: solid;
+  border-color: var(--color-primary-light);
+  background-color: var(--color-success-light);
+}
+
+
+/* ── Info button ─────────────────────────────────────────────────────────────── */
+
+.inst-selector__info-btn {
+  width: 28px;
+  height: 28px;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.inst-selector__info-btn:hover {
+  color: var(--color-primary-light);
+  background-color: var(--color-surface-2);
+}
+
+/* Hide info button on narrow screens — trigger already opens the modal */
+@media (max-width: 479px) {
+  .inst-selector__info-btn {
+    display: none;
+  }
+}
+
+
+/* ── Selected institution ────────────────────────────────────────────────────── */
+
+.inst-selected {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.inst-selected__logo {
+  flex-shrink: 0;
+}
+
+.inst-selected__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.inst-selected__name {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  line-height: var(--line-height-tight);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.inst-selected__full-name {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: var(--line-height-tight);
+}
+
+/* On mobile, hide the full name to save space */
+@media (max-width: 599px) {
+  .inst-selected__full-name {
+    display: none;
+  }
+}
+
+.inst-selected__badges {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-shrink: 0;
+}
+
+/* Hide type badge on small screens */
+@media (max-width: 767px) {
+  .inst-selected__badges .type-badge {
+    display: none;
+  }
+}
+
+.inst-selected__change-hint {
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+
+/* ── Empty state ─────────────────────────────────────────────────────────────── */
+
+.inst-empty {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+}
+
+.inst-empty__icon {
+  display: flex;
+  align-items: center;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.inst-empty__text {
+  font-size: var(--font-size-base);
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+}
+
+.inst-empty__arrow {
+  display: flex;
+  align-items: center;
+  color: var(--color-text-muted);
+  margin-left: auto;
+}
+
+.inst-selector__trigger--empty:hover .inst-empty__text {
+  color: var(--color-primary-light);
+}
+
+.inst-selector__trigger--empty:hover .inst-empty__icon,
+.inst-selector__trigger--empty:hover .inst-empty__arrow {
+  color: var(--color-primary-light);
+}
+
+
+/* ── Scale badge ─────────────────────────────────────────────────────────────── */
+
+.scale-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-pill);
+  font-size: 10px;
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.scale-badge--compact {
+  height: 18px;
+  font-size: 9px;
+  padding: 0 6px;
+}
+
+.scale-badge--five {
+  background-color: var(--color-success-light);
+  color: var(--color-success);
+}
+
+.scale-badge--four {
+  background-color: var(--color-surface-3);
+  color: var(--color-text-secondary);
+}
+
+.scale-badge--seven {
+  background-color: var(--color-warning-light);
+  color: var(--color-warning);
+}
+
+.scale-badge--custom {
+  background-color: var(--color-surface-3);
+  color: var(--color-text-secondary);
+}
+
+
+/* ── Type badge ──────────────────────────────────────────────────────────────── */
+
+.type-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: var(--radius-pill);
+  font-size: 9px;
+  font-weight: var(--font-weight-medium);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.type-badge--federal {
+  background-color: rgba(27, 67, 50, 0.10);
+  color: var(--color-primary);
+}
+
+.type-badge--state {
+  background-color: rgba(56, 102, 65, 0.10);
+  color: var(--color-success);
+}
+
+.type-badge--private {
+  background-color: rgba(244, 162, 97, 0.15);
+  color: var(--color-accent-dark);
+}
+
+.type-badge--neutral {
+  background-color: var(--color-surface-3);
+  color: var(--color-text-secondary);
+}
+
+
+/* ── Institution search ──────────────────────────────────────────────────────── */
+
+.inst-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.inst-search__icon {
+  position: absolute;
+  left: var(--space-3);
+  display: flex;
+  align-items: center;
+  color: var(--color-text-muted);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.inst-search__input {
+  width: 100%;
+  height: 40px;
+  padding: 0 var(--space-8) 0 var(--space-8);
+  background-color: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+  outline: none;
+  transition: border-color var(--transition-fast),
+              background-color var(--transition-fast),
+              box-shadow var(--transition-fast);
+}
+
+.inst-search__input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.inst-search__input:focus {
+  background-color: #fff;
+  border-color: var(--color-primary-light);
+  box-shadow: 0 0 0 3px rgba(45, 106, 79, 0.12);
+}
+
+.inst-search__clear {
+  position: absolute;
+  right: var(--space-2);
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: background-color var(--transition-fast),
+              color var(--transition-fast);
+}
+
+.inst-search__clear:hover {
+  background-color: var(--color-surface-3);
+  color: var(--color-text-primary);
+}
+
+
+/* ── Institution list item ───────────────────────────────────────────────────── */
+
+.inst-list-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background-color var(--transition-fast);
+  border-radius: 0;
+}
+
+.inst-list-item:hover {
+  background-color: var(--color-surface-2);
+}
+
+.inst-list-item:focus-visible {
+  outline: 2px solid var(--color-primary-light);
+  outline-offset: -2px;
+}
+
+.inst-list-item--selected {
+  background-color: var(--color-success-light);
+}
+
+.inst-list-item--selected:hover {
+  background-color: #d8eedc;
+}
+
+.inst-list-item__logo {
+  flex-shrink: 0;
+}
+
+.inst-list-item__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.inst-list-item__name {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+  line-height: var(--line-height-tight);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.inst-list-item__meta {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.inst-list-item__right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.inst-list-item__check {
+  display: flex;
+  align-items: center;
+  color: var(--color-success);
+}

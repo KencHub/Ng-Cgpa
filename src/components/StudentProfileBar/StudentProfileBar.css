@@ -1,0 +1,128 @@
+/* ── Profile bar ─────────────────────────────────────────────────────────────── */
+
+/* The outer .panel-card class is applied in the JSX. */
+/* This file only adds profile-specific overrides. */
+
+.profile-bar__header {
+  /* Extends .collapsible-header from App.css */
+  gap: var(--space-3);
+}
+
+.profile-bar__header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+
+/* ── Summary line (shown when collapsed) ────────────────────────────────────── */
+
+.profile-bar__summary {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: var(--line-height-tight);
+  max-width: 480px;
+}
+
+.profile-bar__summary--empty {
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+
+/* ── Expanded body ───────────────────────────────────────────────────────────── */
+
+.profile-bar__body {
+  padding: var(--space-4) var(--space-5) var(--space-5);
+  border-top: 1px solid var(--color-border);
+}
+
+.profile-bar__hint {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  line-height: var(--line-height-relaxed);
+  margin-bottom: var(--space-4);
+}
+
+
+/* ── Field grid ─────────────────────────────────────────────────────────────── */
+
+.profile-bar__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4) var(--space-5);
+}
+
+@media (max-width: 599px) {
+  .profile-bar__grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-3);
+  }
+}
+
+@media (min-width: 1280px) {
+  .profile-bar__grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+
+/* ── Profile field ──────────────────────────────────────────────────────────── */
+
+.profile-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.profile-field__label-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.profile-field__label {
+  /* .label class from App.css handles base styles */
+  color: var(--color-text-secondary);
+}
+
+.profile-field__tooltip-anchor {
+  /* .tooltip-anchor from App.css */
+  display: inline-flex;
+  align-items: center;
+}
+
+.profile-field__tooltip-icon {
+  display: flex;
+  align-items: center;
+  color: var(--color-text-muted);
+  cursor: help;
+  transition: color var(--transition-fast);
+}
+
+.profile-field__tooltip-icon:hover {
+  color: var(--color-text-secondary);
+}
+
+
+/* ── Select — custom arrow ──────────────────────────────────────────────────── */
+
+.profile-field__select {
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M2 4l4 4 4-4' stroke='%239A9A9A' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--space-3) center;
+  padding-right: var(--space-8);
+  cursor: pointer;
+}
+
+.profile-field__select:focus {
+  border-color: var(--color-primary-light);
+  box-shadow: 0 0 0 3px rgba(45, 106, 79, 0.12);
+}

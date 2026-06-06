@@ -1,0 +1,117 @@
+/* ── Footer ──────────────────────────────────────────────────────────────────── */
+
+.footer {
+  border-top: 1px solid var(--color-border);
+  background-color: var(--color-surface-2);
+  /* On mobile, leave room for the sticky CGPA bar (72px) */
+}
+
+.footer__inner {
+  width: 100%;
+  max-width: var(--layout-max-width);
+  margin: 0 auto;
+  padding: var(--space-4) var(--layout-padding-x);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+
+/* ── Brand section ───────────────────────────────────────────────────────────── */
+
+.footer__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.footer__logo {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-regular);
+  color: var(--color-text-secondary);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.footer__logo strong {
+  font-weight: var(--font-weight-bold);
+  color: var(--color-primary);
+}
+
+.footer__separator {
+  color: var(--color-border-strong);
+  user-select: none;
+}
+
+.footer__tagline {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  line-height: 1;
+}
+
+
+/* ── Attribution section ─────────────────────────────────────────────────────── */
+
+.footer__right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.footer__built {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.footer__author {
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+}
+
+.footer__year {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+
+/* ── Responsive ──────────────────────────────────────────────────────────────── */
+
+@media (max-width: 767px) {
+  .footer__inner {
+    padding: var(--space-3) var(--space-4);
+    justify-content: center;
+    gap: var(--space-2);
+  }
+
+  .footer__tagline {
+    display: none;
+  }
+
+  .footer__brand {
+    justify-content: center;
+  }
+
+  .footer__right {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 479px) {
+  .footer__separator {
+    display: none;
+  }
+
+  .footer__brand,
+  .footer__right {
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-1);
+  }
+}

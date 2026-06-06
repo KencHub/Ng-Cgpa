@@ -1,0 +1,305 @@
+/* ── Header ──────────────────────────────────────────────────────────────────── */
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  background-color: #fff;
+  border-bottom: 1px solid var(--color-border);
+  height: var(--header-height);
+  display: flex;
+  align-items: center;
+}
+
+.header__inner {
+  width: 100%;
+  max-width: var(--layout-max-width);
+  margin: 0 auto;
+  padding: 0 var(--layout-padding-x);
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  height: 100%;
+}
+
+.header__center {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  overflow: hidden; /* prevents badge overflow from pushing actions off-screen */
+}
+
+
+/* ── Brand logo ──────────────────────────────────────────────────────────────── */
+
+.brand-logo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+  text-decoration: none;
+  user-select: none;
+}
+
+.brand-logo__icon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.brand-logo__wordmark {
+  font-size: 15px;
+  font-weight: var(--font-weight-regular);
+  color: var(--color-text-secondary);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.brand-logo__wordmark strong {
+  font-weight: var(--font-weight-bold);
+  color: var(--color-primary);
+}
+
+/* Hide wordmark on mobile to free space for institution selector + actions */
+@media (max-width: 479px) {
+  .brand-logo__wordmark {
+    display: none;
+  }
+}
+
+
+/* ── Header actions ──────────────────────────────────────────────────────────── */
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-shrink: 0;
+}
+
+.header-actions__btn {
+  color: var(--color-text-secondary);
+}
+
+.header-actions__btn:hover {
+  color: var(--color-text-primary);
+  background-color: var(--color-surface-2);
+}
+
+/*
+ * Import button: hidden on mobile because it becomes available inside the
+ * data menu under "Import Courses". This removes 34px from the header on
+ * mobile, giving the Export trigger room to render fully within the viewport.
+ */
+
+@media (max-width: 767px) {
+  .header-actions .header-actions__import-btn {
+    display: none;
+  }
+}
+
+
+/* ── Data menu trigger ───────────────────────────────────────────────────────── */
+
+.data-menu {
+  position: relative;
+}
+
+.data-menu__trigger {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 34px;
+  padding: 0 var(--space-3);
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+  background-color: #fff;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  transition: background-color var(--transition-fast),
+              border-color var(--transition-fast);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.data-menu__trigger:hover {
+  background-color: var(--color-surface-2);
+  border-color: var(--color-border-strong);
+}
+
+.data-menu__trigger-label {
+  font-weight: var(--font-weight-medium);
+}
+
+/*
+ * Hide label text on tablet and smaller. Use .btn.data-menu__trigger for
+ * higher specificity than the global .btn rule in App.css, which otherwise
+ * wins the cascade and prevents the 34px width from applying.
+ */
+@media (max-width: 767px) {
+  .data-menu__trigger-label {
+    display: none;
+  }
+    .data-menu__trigger-chevron {
+    display: none;
+    }
+
+  .btn.data-menu__trigger {
+    width: 34px;
+    min-width: 34px;
+    max-width: 34px;
+    padding: 0;
+    gap: 0;
+    justify-content: center;
+  }
+}
+
+
+/* ── Dropdown panel ──────────────────────────────────────────────────────────── */
+
+.data-menu__panel {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  right: 0;
+  min-width: 240px;
+  background-color: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-dropdown);
+  z-index: var(--z-dropdown);
+  padding: var(--space-2) 0;
+  animation: dropdownIn var(--transition-fast) ease;
+}
+
+@keyframes dropdownIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* On small screens, keep right-aligned and cap width */
+@media (max-width: 420px) {
+  .data-menu__panel {
+    right: 0;
+    left: auto;
+    min-width: 230px;
+    max-width: calc(100vw - 24px);
+    border-radius: var(--radius-lg);
+    border-top: 1px solid var(--color-border);
+  }
+
+  .data-menu__item-desc {
+    white-space: normal;
+  }
+}
+
+
+/* ── Dropdown items ──────────────────────────────────────────────────────────── */
+
+.data-menu__section-label {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-label);
+  color: var(--color-text-muted);
+  padding: var(--space-2) var(--space-4) var(--space-1);
+}
+
+.data-menu__divider {
+  height: 1px;
+  background-color: var(--color-border);
+  margin: var(--space-2) 0;
+}
+
+.data-menu__item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-2) var(--space-4);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background-color var(--transition-fast);
+  border-radius: 0;
+}
+
+.data-menu__item:hover {
+  background-color: var(--color-surface-2);
+}
+
+.data-menu__item:focus-visible {
+  outline: 2px solid var(--color-primary-light);
+  outline-offset: -2px;
+}
+
+.data-menu__item--danger:hover {
+  background-color: var(--color-danger-light);
+}
+
+.data-menu__item--danger .data-menu__item-label {
+  color: var(--color-danger);
+}
+
+.data-menu__item--danger .data-menu__item-icon {
+  color: var(--color-danger);
+}
+
+.data-menu__item-icon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  color: var(--color-text-secondary);
+  margin-top: 1px;
+}
+
+.data-menu__item-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.data-menu__item-label {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+
+.data-menu__item-desc {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+
+/* ── Responsive: tablet ─────────────────────────────────────────────────────── */
+
+@media (max-width: 767px) {
+  .header__inner {
+    padding: 0 var(--space-4);
+    gap: var(--space-3);
+  }
+}
+
+
+/* ── Responsive: mobile ─────────────────────────────────────────────────────── */
+
+@media (max-width: 479px) {
+  .header__inner {
+    padding: 0 var(--space-3);
+    gap: var(--space-2);
+  }
+
+  .header-actions {
+    gap: 0;
+  }
+}

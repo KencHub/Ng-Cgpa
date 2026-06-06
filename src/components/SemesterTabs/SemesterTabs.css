@@ -1,0 +1,287 @@
+/* ── Semester tabs ───────────────────────────────────────────────────────────── */
+
+.semester-tabs {
+  position: relative;
+  background-color: var(--color-surface-2);
+  border-bottom: 1px solid var(--color-border);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  overflow: hidden;
+}
+
+/* When used as standalone panel (not as part of a panel-card) */
+.semester-tabs + .semester-panel {
+  border-top: none;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+
+
+/* ── Scrollable strip ────────────────────────────────────────────────────────── */
+
+.semester-tabs__scroll {
+  display: flex;
+  align-items: stretch;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+
+  /* Hide scrollbar on all browsers */
+  scrollbar-width: none;          /* Firefox */
+  -ms-overflow-style: none;       /* IE/Edge */
+}
+
+.semester-tabs__scroll::-webkit-scrollbar {
+  display: none;                  /* Chrome/Safari */
+}
+
+
+/* ── Individual tab ──────────────────────────────────────────────────────────── */
+
+.semester-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0 var(--space-4);
+  height: 44px;
+  min-height: 44px;             /* iOS touch target */
+  min-width: 0;
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-right: 1px solid var(--color-border);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color var(--transition-fast),
+              border-bottom-color var(--transition-fast),
+              color var(--transition-fast);
+  position: relative;
+}
+
+.semester-tab:hover {
+  background-color: var(--color-surface-3);
+}
+
+.semester-tab:focus-visible {
+  outline: 2px solid var(--color-primary-light);
+  outline-offset: -2px;
+}
+
+
+/* ── Tab label ───────────────────────────────────────────────────────────────── */
+
+.semester-tab__label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color var(--transition-fast);
+}
+
+@media (max-width: 599px) {
+  .semester-tab__label {
+    max-width: 110px;
+    font-size: var(--font-size-xs);
+  }
+}
+
+
+/* ── Active tab ──────────────────────────────────────────────────────────────── */
+
+.semester-tab--active {
+  background-color: #fff;
+  border-bottom-color: var(--color-primary);
+}
+
+.semester-tab--active:hover {
+  background-color: #fff;
+}
+
+.semester-tab--active .semester-tab__label {
+  color: var(--color-primary);
+  font-weight: var(--font-weight-bold);
+}
+
+
+/* ── Course count badge (active tab only) ───────────────────────────────────── */
+
+.semester-tab__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 var(--space-1);
+  background-color: var(--color-primary);
+  color: #fff;
+  border-radius: var(--radius-pill);
+  font-size: 10px;
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0;
+  flex-shrink: 0;
+  /* Hide if empty (semester has 0 courses) */
+}
+
+.semester-tab__count:empty {
+  display: none;
+}
+
+
+/* ── Dot indicator (inactive tabs with data) ────────────────────────────────── */
+
+.semester-tab__dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: var(--color-accent);
+  flex-shrink: 0;
+}
+
+.semester-tab--active .semester-tab__dot {
+  display: none;
+}
+
+
+/* ── Add semester button ─────────────────────────────────────────────────────── */
+
+.semester-tabs__add {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0 var(--space-3);
+  height: 44px;
+  min-height: 44px;
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  border-left: 1px solid var(--color-border);
+  cursor: pointer;
+  color: var(--color-text-muted);
+  transition: background-color var(--transition-fast),
+              color var(--transition-fast);
+  white-space: nowrap;
+  margin-left: auto;             /* Push to trailing edge */
+  position: sticky;
+  right: 0;
+  background-color: var(--color-surface-2);
+}
+
+.semester-tabs__add:hover {
+  background-color: var(--color-success-light);
+  color: var(--color-success);
+}
+
+.semester-tabs__add:focus-visible {
+  outline: 2px solid var(--color-primary-light);
+  outline-offset: -2px;
+}
+
+.semester-tabs__add-label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+}
+
+/* Mobile: icon only */
+@media (max-width: 479px) {
+  .semester-tabs__add-label {
+    display: none;
+  }
+
+  .semester-tabs__add {
+    padding: 0 var(--space-3);
+  }
+}
+
+
+/* ── Fade shadows (scroll indicators) ──────────────────────────────────────── */
+
+.semester-tabs__fade {
+  position: absolute;
+  top: 0;
+  bottom: 1px; /* Stop above border-bottom */
+  width: 40px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.semester-tabs__fade--left {
+  left: 0;
+  background: linear-gradient(
+    to right,
+    var(--color-surface-2) 0%,
+    transparent 100%
+  );
+}
+
+.semester-tabs__fade--right {
+  right: 0;
+  /* Don't overlap the sticky Add button (approx 80px wide) */
+  right: 80px;
+  background: linear-gradient(
+    to left,
+    var(--color-surface-2) 0%,
+    transparent 100%
+  );
+}
+
+@media (max-width: 479px) {
+  .semester-tabs__fade--right {
+    right: 46px;
+  }
+}
+
+
+/* ── Empty state (no semesters yet) ──────────────────────────────────────────── */
+
+.semester-tabs--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 56px;
+  padding: var(--space-3) var(--space-5);
+}
+
+.semester-tabs__first-add {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  background-color: #fff;
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background-color var(--transition-fast),
+              border-color var(--transition-fast),
+              color var(--transition-fast);
+}
+
+.semester-tabs__first-add:hover {
+  background-color: var(--color-success-light);
+  border-color: var(--color-success);
+  color: var(--color-success);
+  border-style: solid;
+}
+
+.semester-tabs__first-add:focus-visible {
+  outline: 2px solid var(--color-primary-light);
+  outline-offset: 2px;
+}
+
+
+/* ── Responsive: compact labels on small screens ───────────────────────────── */
+
+@media (max-width: 374px) {
+  .semester-tab {
+    padding: 0 var(--space-3);
+  }
+
+  .semester-tab__label {
+    max-width: 80px;
+  }
+}

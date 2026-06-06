@@ -1,0 +1,104 @@
+:root {
+
+  /* ── Colors ── */
+  --color-primary:        #1B4332;
+  --color-primary-light:  #2D6A4F;
+  --color-primary-hover:  #14532D;
+
+  --color-accent:         #F4A261;
+  --color-accent-light:   #FDDCB5;
+  --color-accent-dark:    #C97D3A;
+
+  --color-surface:        #FAFAF8;
+  --color-surface-2:      #F0EDE8;
+  --color-surface-3:      #E8E4DC;
+
+  --color-text-primary:   #1A1A1A;
+  --color-text-secondary: #5C5C5C;
+  --color-text-muted:     #9A9A9A;
+
+  --color-danger:         #C1121F;
+  --color-danger-light:   #FDECEA;
+
+  --color-success:        #386641;
+  --color-success-light:  #EAF4EC;
+
+  --color-warning:        #BC6C25;
+  --color-warning-light:  #FEF3E2;
+
+  --color-border:         #D6D0C8;
+  --color-border-strong:  #B8B0A4;
+
+  /* ── Degree Class Colors ── */
+  --color-class-first:        #386641;
+  --color-class-upper:        #1B4332;
+  --color-class-lower:        #BC6C25;
+  --color-class-third:        #7B4F12;
+  --color-class-pass:         #5C5C5C;
+  --color-class-none:         #C1121F;
+
+  /* ── Typography ── */
+  --font-family:          'Inter', system-ui, -apple-system, sans-serif;
+
+  --font-size-xs:         11px;
+  --font-size-sm:         12px;
+  --font-size-base:       14px;
+  --font-size-md:         15px;
+  --font-size-lg:         16px;
+  --font-size-xl:         20px;
+  --font-size-2xl:        24px;
+  --font-size-cgpa:       64px;
+
+  --font-weight-regular:  400;
+  --font-weight-medium:   500;
+  --font-weight-bold:     700;
+
+  --line-height-tight:    1.2;
+  --line-height-base:     1.5;
+  --line-height-relaxed:  1.65;
+
+  --letter-spacing-label: 0.06em;
+  --letter-spacing-cgpa:  -0.02em;
+
+  /* ── Spacing ── */
+  --space-1:   4px;
+  --space-2:   8px;
+  --space-3:   12px;
+  --space-4:   16px;
+  --space-5:   20px;
+  --space-6:   24px;
+  --space-8:   32px;
+  --space-10:  40px;
+  --space-12:  48px;
+
+  /* ── Border Radius ── */
+  --radius-sm:   4px;
+  --radius-md:   6px;
+  --radius-lg:   10px;
+  --radius-pill: 999px;
+
+  /* ── Shadows ── */
+  --shadow-modal:   0 20px 60px rgba(0, 0, 0, 0.18);
+  --shadow-tooltip: 0 4px 12px rgba(0, 0, 0, 0.12);
+  --shadow-dropdown: 0 8px 24px rgba(0, 0, 0, 0.10);
+
+  /* ── Transitions ── */
+  --transition-fast:   120ms ease;
+  --transition-base:   200ms ease;
+  --transition-slow:   320ms ease;
+
+  /* ── Layout ── */
+  --header-height:       60px;
+  --left-panel-width:    65%;
+  --right-panel-width:   35%;
+  --layout-gap:          var(--space-6);
+  --layout-max-width:    1440px;
+  --layout-padding-x:    var(--space-6);
+
+  /* ── Z-index ── */
+  --z-base:       1;
+  --z-sticky:     10;
+  --z-dropdown:   100;
+  --z-modal:      200;
+  --z-toast:      300;
+}
