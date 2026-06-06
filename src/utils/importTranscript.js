@@ -199,9 +199,24 @@ function parseSheetForSemesters(rows, gradeTable, generateId, sheetName, skipped
     return [];
   }
 
-  const { headerIndex, colMap } = headerInfo;
+
+  
+const { headerIndex, colMap } = headerInfo;
   const semesters = [];
   let current     = null;
+
+  // Scan rows above the column header for a semester label
+  let preSemLabel = null;
+  for (let i = 0; i < headerIndex; i++) {
+    const flat    = rows[i].map(c => String(c).trim());
+    const rowText = flat.join(" ").trim();
+    const label   = detectSemesterLabel(rowText);
+    if (label) preSemLabel = label;
+  }
+  if (preSemLabel) {
+    current = { label: preSemLabel, courses: [], sourceGPA: null };
+    semesters.push(current);
+  }
 
   for (let i = headerIndex + 1; i < rows.length; i++) {
     const row     = rows[i];
