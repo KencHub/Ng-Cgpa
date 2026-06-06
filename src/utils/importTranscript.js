@@ -226,7 +226,7 @@ function parseSheetForSemesters(rows, gradeTable, generateId, sheetName, skipped
     const result = extractCourseFromRow(flat, colMap, gradeTable, generateId);
     if (result.valid) {
       if (!current) {
-        current = { label: sheetName || "Imported Semester", courses: [], sourceGPA: null };
+        current = { label: "Imported Semester", courses: [], sourceGPA: null };
         semesters.push(current);
       }
       current.courses.push(result.course);
