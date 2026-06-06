@@ -13,16 +13,17 @@
 //
 // No external dependencies. No state. Pure function.
 
-const MIN_SCORE = 2;
+const MIN_SCORE = 1;
 
 // Common words excluded from partial matching to avoid false positives.
 const STOP_WORDS = new Set([
-  "what", "how", "does", "will", "can", "the", "my", "your",
+   "what", "how", "does", "will", "can", "the", "my", "your",
   "with", "from", "this", "that", "have", "for", "are", "not",
   "when", "were", "which", "about", "would", "could", "should",
   "just", "like", "some", "than", "then", "also", "very", "much",
   "more", "still", "only", "even", "into", "onto", "upon", "after",
-  "before", "during", "while", "since", "get", "got", "its",
+  "before", "during", "while", "since", "its", "too", "all",
+  "being", "been", "has", "was", "did",
 ]);
 
 

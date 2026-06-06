@@ -167,9 +167,8 @@ export default function ImprovementChat({
         onClick={handleToggle}
         onKeyDown={handleHeaderKeyDown}
       >
-        <div className="chat-header__left">
+            <div className="chat-header__left">
           <span className="collapsible-header__title">Academic Assistant</span>
-          <APIStatusDot online={isAPIOnline} />
         </div>
 
         <div className="chat-header__right">
@@ -235,10 +234,10 @@ export default function ImprovementChat({
             )}
           </div>
 
-          {/* Fallback notice — shown when API is offline */}
-          {!isAPIOnline && (
+          
+          
             <FallbackNotice />
-          )}
+          
 
           {/* Suggested chips */}
           <SuggestedChips
@@ -294,20 +293,6 @@ export default function ImprovementChat({
   );
 }
 
-
-// ── API status dot ────────────────────────────────────────────────────────────
-
-function APIStatusDot({ online }) {
-  return (
-    <span
-      className={`api-status-dot api-status-dot--${online ? "online" : "offline"}`}
-      aria-label={online ? "AI available" : "AI unavailable"}
-      title={online ? "Academic Assistant is available" : "Knowledge Mode — fully offline"}
-    >
-      <span className="api-status-dot__ring" aria-hidden="true" />
-    </span>
-  );
-}
 
 
 // ── Typing indicator ──────────────────────────────────────────────────────────

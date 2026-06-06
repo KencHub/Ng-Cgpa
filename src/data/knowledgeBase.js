@@ -1,5 +1,5 @@
 // ── knowledgeBase.js ──────────────────────────────────────────────────────────
-// Knowledge base for the NG CGPA Knowledge Assistant.
+// Knowledge base for the NG CGPA Academic Assistant.
 //
 // Each entry:
 //   id               — unique identifier
@@ -8,22 +8,13 @@
 //   weight           — match priority multiplier: 1 normal, 2 high, 3 exact-intent
 //   generateResponse — function(ctx) → string
 //                      ctx is produced by responseRenderer.buildContext()
-//
-// Response rules:
-//   Personalised when ctx.hasData is true (cgpa not null, courses entered).
-//   Generic fallback when data is missing. Never crashes on null ctx fields.
-//   Short paragraphs separated by \n\n. Max ~280 words per response.
-//   Ends with an action hint when useful.
-//
-// Draft responses (letters, plans) use student profile fields from ctx.
-// All bracketed placeholders in drafts are for the user to fill in.
 
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
-function school(ctx)     { return ctx.school || "your university"; }
-function scale(ctx)      { return ctx.scale  || 5.0; }
-function cgpaStr(ctx)    { return ctx.cgpa   || "your current CGPA"; }
+function school(ctx)  { return ctx.school || "your university"; }
+function scale(ctx)   { return ctx.scale  || 5.0; }
+function cgpaStr(ctx) { return ctx.cgpa   || "your current CGPA"; }
 
 function feasibility(gpa, scaleMax) {
   const g = parseFloat(gpa);
@@ -56,6 +47,9 @@ export const KNOWLEDGE_BASE = [
     keywords: [
       "what is cgpa", "cgpa mean", "cgpa stand for", "cumulative grade",
       "define cgpa", "explain cgpa", "cgpa definition", "meaning of cgpa",
+      "cgpa full meaning", "cgpa full form", "what does cgpa mean",
+      "understand cgpa", "cgpa explained", "what cgpa means",
+      "cgpa kini", "what is a cgpa",
     ],
     generateResponse(ctx) {
       const lines = [
@@ -83,6 +77,8 @@ export const KNOWLEDGE_BASE = [
     keywords: [
       "what is gpa", "gpa mean", "gpa stand", "grade point average",
       "semester gpa", "how is gpa", "explain gpa", "define gpa",
+      "understand gpa", "gpa explained", "what does gpa mean",
+      "gpa meaning", "gpa definition", "what is a gpa",
     ],
     generateResponse(ctx) {
       const lines = [
@@ -111,6 +107,7 @@ export const KNOWLEDGE_BASE = [
     keywords: [
       "quality point", "what is quality point", "quality points mean",
       "how quality point", "calculate quality", "what are qp",
+      "what is qp", "quality point meaning", "how qp works",
     ],
     generateResponse(ctx) {
       return [
@@ -133,6 +130,7 @@ export const KNOWLEDGE_BASE = [
     keywords: [
       "cgpa vs gpa", "difference between cgpa and gpa", "cgpa and gpa",
       "cgpa or gpa", "gpa vs cgpa", "difference gpa cgpa",
+      "cgpa versus gpa", "gpa compared to cgpa",
     ],
     generateResponse(ctx) {
       return [
@@ -155,6 +153,7 @@ export const KNOWLEDGE_BASE = [
       "how is cgpa calculated", "calculate cgpa", "cgpa formula",
       "how to calculate cgpa", "cgpa step by step", "formula for cgpa",
       "manual cgpa", "how do i calculate my cgpa", "calculate my cgpa",
+      "cgpa calculation steps", "show me how to calculate",
     ],
     generateResponse(ctx) {
       const lines = [
@@ -181,13 +180,67 @@ export const KNOWLEDGE_BASE = [
   // ════════════════════════════════════════════════════════════════════════════
 
   {
+    id: "current-class",
+    title: "What Is My Current Degree Class?",
+    weight: 3,
+    keywords: [
+      "what is my class", "current class", "what class am i",
+      "what degree am i", "my current degree", "what class do i have",
+      "what classification am i", "what class do i currently have",
+      "am i in first class", "what class is this cgpa",
+      "what class do i fall in", "what degree class am i",
+      "my degree class", "current standing", "academic standing",
+      "where do i stand", "what grade am i", "my current result",
+      "what class am i in right now", "what result do i have",
+    ],
+    generateResponse(ctx) {
+      if (!ctx.hasData) {
+        return "Enter your courses and select your university to calculate your current degree class.";
+      }
+
+      const lines = [
+        `At ${school(ctx)}, your current degree class is: ${ctx.degreeClass || "Not yet classified"}.`,
+        `Your CGPA is ${cgpaStr(ctx)} out of ${scale(ctx)}.`,
+      ];
+
+      if (ctx.nextClassLabel) {
+        const gap = parseFloat(ctx.deficit);
+        lines.push(
+          `The next class up is ${ctx.nextClassLabel} (requires ${ctx.nextClassMin}). You are ${ctx.deficit} points below that boundary.`
+        );
+        if (gap <= 0.10) {
+          lines.push(`You are borderline. One strong semester can push you into ${ctx.nextClassLabel}.`);
+        } else if (gap <= 0.30) {
+          lines.push(`You are within reach. Consistent improvement over 1 to 2 semesters can get you there.`);
+        }
+      } else {
+        lines.push("You are in the highest available classification. Your task now is to maintain this.");
+      }
+
+      if (ctx.cushion !== null && parseFloat(ctx.cushion) <= 0.15) {
+        lines.push(`Warning: you are only ${ctx.cushion} points above the lower boundary of ${ctx.degreeClass}. A weak semester could drop your class.`);
+      }
+
+      if (ctx.trend === "declining") {
+        lines.push("Your semester GPA has been declining. This will reduce your CGPA if the trend continues.");
+      }
+
+      return lines.join("\n\n");
+    },
+  },
+
+
+  {
     id: "first-class-track",
     title: "Am I on Track for First Class?",
     weight: 3,
     keywords: [
       "on track for first class", "first class", "first-class", "am i on track",
       "can i get first class", "achieve first class", "first class honours",
-      "track for first", "going to get first class",
+      "track for first", "going to get first class", "will i make first class",
+      "can i still make first", "first class chances", "chances of first class",
+      "likely first class", "on course for first", "first class possible",
+      "first class realistic", "heading for first class",
     ],
     generateResponse(ctx) {
       if (!ctx.hasInstitution) {
@@ -197,9 +250,9 @@ export const KNOWLEDGE_BASE = [
         return `At ${school(ctx)}, First Class requires a CGPA of ${ctx.firstClassMin || "4.50"} out of ${scale(ctx)}. Enter your courses to see where you stand.`;
       }
 
-      const fcMin  = parseFloat(ctx.firstClassMin);
-      const cgpaVal = parseFloat(ctx.cgpa);
-      const reqGPA  = parseFloat(ctx.requiredGPAForFirstClass);
+      const fcMin    = parseFloat(ctx.firstClassMin);
+      const cgpaVal  = parseFloat(ctx.cgpa);
+      const reqGPA   = parseFloat(ctx.requiredGPAForFirstClass);
       const scaleMax = scale(ctx);
 
       if (ctx.isFirstClass) {
@@ -232,7 +285,9 @@ export const KNOWLEDGE_BASE = [
     keywords: [
       "what class will i graduate", "graduation class", "what will i graduate with",
       "what degree class", "at this rate", "current pace", "projected class",
-      "what class am i getting",
+      "what class am i getting", "what will i graduate as", "expected class",
+      "graduating with what", "likely graduation class", "what am i graduating with",
+      "what class will i get", "my final class", "what will my result be",
     ],
     generateResponse(ctx) {
       if (!ctx.hasData) {
@@ -270,7 +325,10 @@ export const KNOWLEDGE_BASE = [
     keywords: [
       "what gpa do i need", "gpa next semester", "need next semester",
       "required gpa", "how much gpa", "gpa do i need to get",
-      "what do i need next semester", "target gpa next",
+      "what do i need next semester", "target gpa next", "gpa target",
+      "what score do i need", "minimum gpa needed", "gpa requirement",
+      "how high gpa", "target for next semester", "gpa i need",
+      "what gpa to aim for", "gpa needed to",
     ],
     generateResponse(ctx) {
       if (!ctx.hasData) {
@@ -312,6 +370,9 @@ export const KNOWLEDGE_BASE = [
       "borderline", "am i borderline", "close to first class",
       "close to 2:1", "close to second upper", "near the boundary",
       "almost first class", "nearly 2:1", "just below boundary",
+      "how close am i", "am i close", "near classification",
+      "almost there", "nearly there", "close to boundary",
+      "almost 2:1", "nearly first class", "almost upgrade",
     ],
     generateResponse(ctx) {
       if (!ctx.hasData) {
@@ -360,6 +421,7 @@ export const KNOWLEDGE_BASE = [
       "recover", "bad semester", "terrible semester", "worst semester",
       "failed semester", "poor semester", "horrible semester",
       "can i come back from", "come back from a bad",
+      "recover from poor results", "bounce back", "bad results",
     ],
     generateResponse(ctx) {
       if (!ctx.hasData) {
@@ -407,6 +469,7 @@ export const KNOWLEDGE_BASE = [
     keywords: [
       "how many as", "how many a grades", "how many a do i need",
       "number of a grades", "need how many a", "many a to get first class",
+      "how many as do i need", "a grades needed",
     ],
     generateResponse(ctx) {
       if (!ctx.hasData) {
@@ -422,13 +485,13 @@ export const KNOWLEDGE_BASE = [
       const lines    = [];
 
       if (ctx.nextClassLabel && ctx.nextClassMin !== null) {
-        const targetMin  = parseFloat(ctx.nextClassMin);
-        const targetQP   = targetMin * (ctx.totalCU + ctx.estCUPerSem);
+        const targetMin      = parseFloat(ctx.nextClassMin);
+        const targetQP       = targetMin * (ctx.totalCU + ctx.estCUPerSem);
         const neededFutureQP = targetQP - ctx.totalQP;
-        const aPoint     = scaleMax >= 5 ? 5 : 4;
-        const bPoint     = scaleMax >= 5 ? 4 : 3;
+        const aPoint         = scaleMax >= 5 ? 5 : 4;
+        const bPoint         = scaleMax >= 5 ? 4 : 3;
         const avgCUPerCourse = 3;
-        const coursesNext = Math.round(ctx.estCUPerSem / avgCUPerCourse);
+        const coursesNext    = Math.round(ctx.estCUPerSem / avgCUPerCourse);
 
         lines.push(
           `To reach ${ctx.nextClassLabel} (${ctx.nextClassMin}) next semester (${ctx.estCUPerSem} units), ` +
@@ -467,6 +530,9 @@ export const KNOWLEDGE_BASE = [
       "failed a course", "i failed", "fail a course", "i got an f",
       "f grade", "how bad is it", "zero grade", "failed course",
       "course failure", "how bad is failing", "i got f",
+      "failed my exam", "failed an exam", "failed exam",
+      "got zero in", "zero in a course", "i fail", "failed my course",
+      "got an f", "failed one course", "i scored zero", "i got zero",
     ],
     generateResponse(ctx) {
       const generic = [
@@ -492,7 +558,7 @@ export const KNOWLEDGE_BASE = [
       ctx.failedCourses.forEach(c => {
         const cu = parseFloat(c.creditUnits);
         if (isNaN(cu) || cu <= 0) return;
-        const cPoint  = scale(ctx) >= 5 ? 3 : 2; // grade point for C
+        const cPoint   = scale(ctx) >= 5 ? 3 : 2;
         const gainedQP = cu * cPoint;
         const newCGPA  = ((ctx.totalQP + gainedQP) / ctx.totalCU).toFixed(2);
         lines.push(
@@ -516,6 +582,9 @@ export const KNOWLEDGE_BASE = [
       "retake", "retaking", "carryover", "carry over", "carry-over",
       "supplementary", "resit", "re-sit", "how does retake work",
       "what happens when i retake", "carryover impact",
+      "carryover course", "pending course", "outstanding course",
+      "how retake works", "can i retake", "retake policy",
+      "what is carryover", "carryover meaning",
     ],
     generateResponse(ctx) {
       return [
@@ -539,7 +608,8 @@ export const KNOWLEDGE_BASE = [
     keywords: [
       "high credit course", "credit weight", "4 unit course", "3 unit course",
       "heavy course", "high unit course", "which course matters most",
-      "credit unit importance", "course weight",
+      "credit unit importance", "course weight", "unit weight",
+      "why does credit unit matter", "does credit unit affect cgpa",
     ],
     generateResponse(ctx) {
       return [
@@ -566,6 +636,10 @@ export const KNOWLEDGE_BASE = [
       "improve cgpa", "boost cgpa", "increase cgpa", "raise cgpa",
       "improve my gpa", "how to improve", "how do i improve",
       "strategies to improve", "cgpa improvement", "make cgpa better",
+      "my cgpa dropped", "cgpa falling", "cgpa going down", "cgpa is low",
+      "fix cgpa", "cgpa is bad", "what should i do", "bad cgpa",
+      "cgpa not good", "my cgpa is poor", "cgpa too low",
+      "tips to improve cgpa", "what can i do to improve",
     ],
     generateResponse(ctx) {
       if (!ctx.hasData) {
@@ -574,7 +648,7 @@ export const KNOWLEDGE_BASE = [
           "1. Retake every failed course. An F contributes 0 quality points while those credit units are still dividing your average. A passing retake adds quality points without increasing the denominator.",
           "2. Prioritise high-credit courses. A 4-unit course affects your CGPA four times more than a 1-unit course. Spend study time proportionally.",
           "3. Be consistent. Alternating strong and weak semesters cancels out the strong ones. Steady B and above performance is more effective than swings between A and D.",
-          "Enter your courses to get a personalized analysis of what you need.",
+          "Enter your courses to get a personalised analysis of what you need.",
         ].join("\n\n");
       }
 
@@ -601,6 +675,64 @@ export const KNOWLEDGE_BASE = [
 
 
   {
+    id: "cgpa-at-risk",
+    title: "My CGPA Is Very Low — What Do I Do?",
+    weight: 2,
+    keywords: [
+      "cgpa too low", "cgpa is bad", "very low cgpa", "low cgpa",
+      "terrible cgpa", "bad cgpa", "my result is bad",
+      "will i be rusticated", "will i fail out", "risk of expulsion",
+      "academic probation", "cgpa below 2", "my cgpa is 1",
+      "cgpa is 1", "dropping out", "risk of withdrawal",
+      "my cgpa is terrible", "what do i do my cgpa is low",
+      "cgpa is 1.5", "cgpa is 2", "am i at risk",
+    ],
+    generateResponse(ctx) {
+      if (!ctx.hasData) {
+        return [
+          "A low CGPA is recoverable, but the path forward depends entirely on your specific numbers — how many credit units you have accumulated, how many semesters remain, and which courses you have failed.",
+          "The three highest-impact actions regardless of your situation:",
+          "1. Pass every current course — even a D is better than an F. A failed course adds 0 quality points but its credit units still divide your average.",
+          "2. Retake every failed course immediately. Each passing retake adds quality points without increasing your denominator.",
+          "3. Prioritise high-credit courses. A 4-unit course has four times the impact of a 1-unit course.",
+          "Enter your courses to get a specific analysis of what is recoverable.",
+        ].join("\n\n");
+      }
+
+      const cgpaVal = parseFloat(ctx.cgpa);
+      const lines   = [`Your CGPA is ${cgpaStr(ctx)} at ${school(ctx)}.`];
+
+      if (cgpaVal < 1.00) {
+        lines.push(
+          "This is a critical situation. A CGPA below 1.00 means no degree will be awarded at most Nigerian universities. Speak with your faculty officer or academic advisor immediately about your status and available options."
+        );
+      } else if (cgpaVal < 1.50) {
+        lines.push(
+          `You are currently below the Third Class boundary of ${ctx.thirdClassMin || "1.50"}. This means you are at risk of not earning a degree.`,
+          "Immediate focus: pass every single course on your current registration. Do not prioritise high grades over passing first. Any quality point is better than zero."
+        );
+      } else if (cgpaVal < 2.40) {
+        lines.push(
+          `You are in Third Class territory. The boundary to Second Class Lower (2:2) is ${scale(ctx) >= 5 ? "2.40" : "2.00"}.`,
+          ctx.requiredGPAForNextClass !== null
+            ? `To reach 2:2 over ${ctx.remSems} remaining semesters at ${ctx.estCUPerSem} units each, you need a semester GPA of ${ctx.requiredGPAForNextClass}. That is ${feasibility(ctx.requiredGPAForNextClass, scale(ctx))}.`
+            : "Use the Projection panel to calculate what you need per semester."
+        );
+      }
+
+      if (ctx.failedCount > 0) {
+        lines.push(
+          `You have ${ctx.failedCount} failed course${ctx.failedCount > 1 ? "s" : ""}. Retaking ${ctx.failedCount === 1 ? "it" : "them"} is the single fastest way to move your CGPA. Each passing retake adds quality points without touching your denominator.`
+        );
+      }
+
+      lines.push("Visit your faculty officer to understand your institution's specific policies on minimum CGPA requirements.");
+      return lines.join("\n\n");
+    },
+  },
+
+
+  {
     id: "move-2-2-to-2-1",
     title: "How Do I Move from a 2:2 to a 2:1?",
     weight: 3,
@@ -608,6 +740,9 @@ export const KNOWLEDGE_BASE = [
       "move from 2:2 to 2:1", "2:2 to 2:1", "second lower to second upper",
       "upgrade from 2:2", "go from 2:2 to 2:1", "from lower to upper",
       "improve from 2:2", "second class lower to upper",
+      "how to get 2:1", "upgrade my class", "move up class",
+      "second lower upgrade", "from 2.2 to 2.1", "2.2 to 2.1",
+      "how do i get second upper", "second class upper",
     ],
     generateResponse(ctx) {
       if (!ctx.hasInstitution) {
@@ -653,6 +788,9 @@ export const KNOWLEDGE_BASE = [
       "avoid third class", "minimum to avoid third", "third class",
       "not get third class", "avoid 3rd class", "minimum cgpa",
       "minimum i need", "pass degree", "not get third",
+      "will i get third class", "am i getting third class",
+      "third class risk", "danger of third class", "at risk of third",
+      "avoid failing out", "am i in danger", "am i at risk of third",
     ],
     generateResponse(ctx) {
       if (!ctx.hasInstitution) {
@@ -707,6 +845,9 @@ export const KNOWLEDGE_BASE = [
       "still possible first class", "is it still possible", "can i still get first",
       "still get first class", "first class still achievable", "can i make first class",
       "is first class possible", "still make first class",
+      "first class still possible", "realistic first class",
+      "is first class realistic", "can i make it to first class",
+      "still achievable", "first class still realistic",
     ],
     generateResponse(ctx) {
       if (!ctx.hasData) {
@@ -748,6 +889,54 @@ export const KNOWLEDGE_BASE = [
   },
 
 
+  {
+    id: "what-if-simulation",
+    title: "What If I Get a Specific GPA Next Semester?",
+    weight: 2,
+    keywords: [
+      "what if i get", "if i score", "what if i score",
+      "if i get all as", "if i get a gpa of", "what happens if i get",
+      "simulate cgpa", "if next semester i get", "what if i make",
+      "projection if i", "if i achieve", "what if i average",
+      "if i get 4.5", "if i get 5.0", "if i get 4.0",
+      "what if all as", "what if i pass everything",
+      "what would my cgpa be if", "cgpa if i get",
+    ],
+    generateResponse(ctx) {
+      if (!ctx.hasData) {
+        return [
+          "To simulate a specific GPA scenario, enter your current courses first so the tool has a baseline CGPA and credit unit total to project from.",
+          "Once your data is in, use the Projection panel's WHAT IF section: enter your expected next semester GPA and credit unit load, and it will calculate your projected cumulative CGPA instantly.",
+          "General rule on a 5.0 scale: if your next semester GPA is above your current CGPA, your cumulative CGPA rises. If it is below, it falls. The larger your existing credit unit base, the smaller the shift from any single semester.",
+        ].join("\n\n");
+      }
+
+      const estCU   = ctx.estCUPerSem;
+      const totalCU = ctx.totalCU;
+      const totalQP = ctx.totalQP;
+
+      const scenarios = [
+        { label: "All As",    gpa: scale(ctx) >= 5 ? 5.0 : 4.0 },
+        { label: "Mostly Bs", gpa: scale(ctx) >= 5 ? 4.0 : 3.0 },
+        { label: "All Cs",    gpa: scale(ctx) >= 5 ? 3.0 : 2.0 },
+      ].map(s => {
+        const projected = ((totalQP + s.gpa * estCU) / (totalCU + estCU)).toFixed(2);
+        return `${s.label} (${s.gpa.toFixed(1)} GPA) → projected CGPA: ${projected}`;
+      });
+
+      return [
+        `Your current CGPA is ${cgpaStr(ctx)} across ${totalCU} credit units at ${school(ctx)}.`,
+        `Assuming next semester has ${estCU} credit units, here are three scenarios:`,
+        scenarios.join("\n"),
+        "For a custom simulation, use the WHAT IF section in the Projection panel directly — it updates your projected CGPA as you type.",
+        ctx.nextClassLabel
+          ? `To cross into ${ctx.nextClassLabel} (${ctx.nextClassMin}), you need a next-semester GPA of at least ${ctx.requiredGPAForNextClass}.`
+          : "",
+      ].filter(Boolean).join("\n\n");
+    },
+  },
+
+
   // ════════════════════════════════════════════════════════════════════════════
   // CATEGORY E — UNDERSTANDING THE SYSTEM
   // ════════════════════════════════════════════════════════════════════════════
@@ -759,6 +948,7 @@ export const KNOWLEDGE_BASE = [
     keywords: [
       "credit unit", "credit load", "what are credit units", "course unit",
       "how credit units work", "unit explained", "how many credit units",
+      "what is a credit unit", "credit hours", "course units",
     ],
     generateResponse(ctx) {
       return [
@@ -780,7 +970,8 @@ export const KNOWLEDGE_BASE = [
     keywords: [
       "what does the scale mean", "5.0 scale", "4.0 scale", "grading scale",
       "my school scale", "scale explained", "what is 5 point scale",
-      "4 point scale", "grade scale system",
+      "4 point scale", "grade scale system", "what scale does my school use",
+      "grading system", "what is nuc scale",
     ],
     generateResponse(ctx) {
       if (!ctx.hasInstitution) return "Select your university to see which grading scale it uses and how grades map to quality points.";
@@ -823,6 +1014,7 @@ export const KNOWLEDGE_BASE = [
       "2:1 boundary", "2:2 boundary", "classification table",
       "what cgpa for first class", "what cgpa for 2:1",
       "show me the boundaries", "degree class boundaries",
+      "what cgpa is first class", "cgpa for second class",
     ],
     generateResponse(ctx) {
       if (!ctx.hasInstitution) return "Select your university to see its degree classification table.";
@@ -866,6 +1058,7 @@ export const KNOWLEDGE_BASE = [
     keywords: [
       "pass mark", "passmark", "minimum score to pass", "passing score",
       "score needed to pass", "how much to pass exam", "what is pass mark",
+      "what score is pass", "minimum to pass",
     ],
     generateResponse(ctx) {
       const pm      = ctx.passmark || 40;
@@ -892,6 +1085,8 @@ export const KNOWLEDGE_BASE = [
       "which course to focus", "course strategy", "what course priority",
       "prioritise courses", "focus on which course", "study strategy",
       "which course most important", "how to prioritize",
+      "what courses should i study", "which subject to focus",
+      "course priority", "study tips", "exam strategy",
     ],
     generateResponse(ctx) {
       if (!ctx.hasData) {
@@ -932,6 +1127,8 @@ export const KNOWLEDGE_BASE = [
       "draft appeal", "appeal letter", "write appeal", "academic appeal",
       "letter of appeal", "appeal my result", "draft a letter",
       "write a letter", "compose appeal", "letter to senate",
+      "write appeal letter for me", "help me write appeal",
+      "appeal result letter", "appeal to school",
     ],
     generateResponse(ctx) {
       const name    = ctx.studentName     || "[Your Full Name]";
@@ -989,6 +1186,7 @@ export const KNOWLEDGE_BASE = [
       "letter to hod", "hod letter", "head of department letter",
       "write to hod", "letter about my cgpa", "draft hod",
       "letter to head of department", "write to my hod",
+      "write letter to hod", "hod letter for me",
     ],
     generateResponse(ctx) {
       const name    = ctx.studentName     || "[Your Full Name]";
@@ -1045,7 +1243,8 @@ export const KNOWLEDGE_BASE = [
     keywords: [
       "improvement plan", "academic plan", "study plan", "plan to improve",
       "how to plan", "draft plan", "academic improvement plan",
-      "write my plan", "performance plan",
+      "write my plan", "performance plan", "help me make a plan",
+      "create a study plan", "make improvement plan",
     ],
     generateResponse(ctx) {
       const name    = ctx.studentName     || "Student";
@@ -1074,7 +1273,7 @@ export const KNOWLEDGE_BASE = [
         "SECTION 2 — TARGET AND REQUIRED PERFORMANCE",
         ctx.hasData && reqGPA !== "[Required GPA]"
           ? `To reach ${target} (CGPA ${tgtMin}), I need a semester GPA of ${reqGPA} over my remaining ${ctx.remSems} semester${ctx.remSems > 1 ? "s" : ""} at ${ctx.estCUPerSem} units per semester.`
-          : `[Use the Projection panel to calculate the required GPA per semester and enter it here.]`,
+          : "[Use the Projection panel to calculate the required GPA per semester and enter it here.]",
         "",
         "SECTION 3 — ACTION STEPS",
         ctx.failedCount > 0
@@ -1086,15 +1285,15 @@ export const KNOWLEDGE_BASE = [
         "5. Avoid late-night cramming before exams — use distributed study sessions across the semester.",
         "",
         "SECTION 4 — TIMELINE",
-        `Semester start:       [Date]`,
-        `Mid-semester review:  [Date]`,
-        `Examination period:   [Date]`,
+        "Semester start:       [Date]",
+        "Mid-semester review:  [Date]",
+        "Examination period:   [Date]",
         `Target GPA this semester: ${reqGPA}`,
         "",
         "SECTION 5 — COMMITMENT",
         `I, ${name}, commit to this plan and will review progress at mid-semester.`,
         "",
-        `Signed: ___________________________    Date: _______________`,
+        "Signed: ___________________________    Date: _______________",
         "",
         "───────────────────────────────────────────────────────────────",
         "Fill in all dates and bracketed sections. Print and keep a copy.",
@@ -1103,11 +1302,41 @@ export const KNOWLEDGE_BASE = [
   },
 
 
+  // ════════════════════════════════════════════════════════════════════════════
+  // CATEGORY G — GETTING STARTED
+  // ════════════════════════════════════════════════════════════════════════════
+
+  {
+    id: "greeting-help",
+    title: "Getting Started",
+    weight: 1,
+    keywords: [
+      "hello", "hi", "hey", "help", "help me", "what can you do",
+      "what can i ask", "what do you know", "how can you help",
+      "assist me", "good morning", "good evening", "good afternoon",
+      "good day", "please help", "i need help", "get started",
+      "how does this work", "what is this",
+    ],
+    generateResponse(ctx) {
+      const intro = ctx.hasData
+        ? `You have entered data for ${ctx.semesterCount} semester${ctx.semesterCount > 1 ? "s" : ""} at ${school(ctx)}. Your current CGPA is ${cgpaStr(ctx)} (${ctx.degreeClass || "calculating"}).`
+        : ctx.hasInstitution
+        ? `You have selected ${school(ctx)}. Enter your courses to unlock personalised answers.`
+        : "Start by selecting your university from the top of the page. Then add your semesters and courses.";
+
+      return [
+        "Here is what you can ask me:",
+        "- Am I on track for a First Class?\n- What GPA do I need next semester?\n- I failed a course — how bad is it?\n- What class will I graduate with at this rate?\n- How do I move from a 2:2 to a 2:1?\n- What is the minimum to avoid Third Class?\n- Draft an academic appeal letter or HOD letter\n- Is First Class still possible for me?\n- What is CGPA, GPA, or a quality point?",
+        intro,
+      ].join("\n\n");
+    },
+  },
+
+
 ];
 
 
 // ── Suggested chips ────────────────────────────────────────────────────────────
-// Shown above the chat input in ImprovementChat.
 
 export const SUGGESTED_CHIPS = [
   "Am I on track for a First Class?",
