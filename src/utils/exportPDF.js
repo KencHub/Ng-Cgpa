@@ -170,11 +170,8 @@ function buildPage1(doc, {
   const cgpaText  = cgpa !== null ? cgpa.toFixed(2) : "\u2014";
   const cgpaColor = degreeClass ? classColor(degreeClass) : PDF_COLOR.textMuted;
 
-  // FIX: Draw CGPA number first, then measure its width at the correct font
-  // size (display/28pt) before switching font for the "/ 5.0" label.
-  // Previously the font was changed before getTextWidth() ran, causing the
-  // width to be measured at 11pt instead of 28pt, placing the slash too early
-  // and overlapping the CGPA digits.
+  // Draw CGPA number first, then measure its width at the correct font
+  // size (28pt) before switching font for the "/ 5.0" label.
   doc.setFont(PDF_FONT.bold.family, PDF_FONT.bold.style);
   doc.setFontSize(PDF_SIZE.display);
   doc.setTextColor(...cgpaColor);
@@ -306,14 +303,28 @@ function buildPage2(doc, { semesterSummaries, institution, cgpa }) {
     margin:  { left: MARGIN.left, right: MARGIN.right },
     ...TABLE_STYLE.semesterBreakdown,
     columnStyles: {
-      0: { cellWidth: 50 },
+      // FIX: Column 0 reduced from 50 to 46, column 3 increased from 24 to 28.
+      // This gives "Semester GPA" header enough room to sit on one line
+      // without wrapping. Total remains 174mm which equals CONTENT_WIDTH.
+      0: { cellWidth: 46 },
       1: { cellWidth: 22, halign: "right" },
       2: { cellWidth: 26, halign: "right" },
-      3: { cellWidth: 24, halign: "right" },
+      3: { cellWidth: 28, halign: "right" },
       4: { cellWidth: 26, halign: "right" },
       5: { cellWidth: 26, halign: "center" },
     },
     didParseCell: (data) => {
+      // FIX: Explicitly align header cells to match their body column alignment.
+      // Without this, headStyles left-aligns all headers while body cells are
+      // right or center aligned, causing visible column misalignment.
+      if (data.section === "head") {
+        if ([1, 2, 3, 4].includes(data.column.index)) {
+          data.cell.styles.halign = "right";
+        }
+        if (data.column.index === 5) {
+          data.cell.styles.halign = "center";
+        }
+      }
       if (data.section === "body" && data.column.index === 5) {
         const val = data.cell.raw;
         data.cell.styles.textColor = classColor(val);
@@ -348,7 +359,6 @@ function buildCourseDetailPages(doc, { semesters }) {
   for (const sem of semesters) {
     if (!Array.isArray(sem.courses) || sem.courses.length === 0) continue;
 
-    // Only export courses that have actual data
     const validCourses = sem.courses.filter(hasData);
     if (validCourses.length === 0) continue;
 
@@ -368,10 +378,6 @@ function buildCourseDetailPages(doc, { semesters }) {
     });
 
     const rows = validCourses.map((course) => {
-      // FIX: Status is now "Failed" instead of "C/O".
-      // "C/O" is informal Nigerian slang for carryover. The PDF is a formal
-      // academic document and must use standard status labels that are
-      // understood outside the university context.
       const isFail = course.gradePoint === 0 ||
         (course.grade && course.grade.toUpperCase() === "F");
       return [
@@ -405,9 +411,19 @@ function buildCourseDetailPages(doc, { semesters }) {
         6: { cellWidth: 21, halign: "center" },
       },
       didParseCell: (data) => {
+        // FIX: Explicitly align header cells to match their body column alignment.
+        // headStyles overrides halign on head cells, so without this the headers
+        // sit left while the data values sit right or center.
+        if (data.section === "head") {
+          if ([1, 2, 4, 5].includes(data.column.index)) {
+            data.cell.styles.halign = "right";
+          }
+          if (data.column.index === 3 || data.column.index === 6) {
+            data.cell.styles.halign = "center";
+          }
+        }
         if (data.section === "body") {
           if (data.column.index === 6) {
-            // FIX: color check updated from "C/O" to "Failed"
             const val = data.cell.raw;
             if (val === "Failed") {
               data.cell.styles.textColor = PDF_COLOR.danger;
@@ -485,10 +501,6 @@ function buildAnalyticsPage(doc, {
   y = addRule(doc, y, PDF_COLOR.accent);
 
   // ── Verification Block ─────────────────────────────────────────────────────
-  // FIX: Added as per architecture spec. This block was missing entirely from
-  // the previous version. It provides a machine-readable audit trail for
-  // the document and gives third parties confidence that the numbers were
-  // validated by the application before export.
   y += 4;
   y = addSectionHeading(doc, "Verification", y);
 

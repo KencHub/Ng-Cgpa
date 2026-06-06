@@ -71,7 +71,7 @@ export const PDF_SIZE = {
   body:       9,
   small:      8,
   micro:      7,
-  watermark: 30,   // FIX: was 46 — too wide at that size, text clipped outside page boundary at 45deg rotation
+  watermark: 30,
 };
 
 
@@ -80,10 +80,6 @@ export const PDF_SIZE = {
 /**
  * Adds a faint diagonal watermark on the current page.
  * Uses GState for opacity. Falls back to near-white gray if GState is unsupported.
- *
- * FIX: Font size reduced from 46 to 30 and text shortened so the full string
- * fits within the A4 page diagonal when rotated 45 degrees. At 46pt the string
- * extended beyond the page boundary and only the middle portion rendered.
  */
 export function addWatermark(doc) {
   const cx = PAGE_WIDTH  / 2;
@@ -103,8 +99,6 @@ export function addWatermark(doc) {
     });
     doc.restoreGraphicsState();
   } catch {
-    // Fallback: near-white so the text does not bleed over content
-    // when GState opacity is unsupported by this jsPDF build.
     doc.setFont(PDF_FONT.bold.family, PDF_FONT.bold.style);
     doc.setFontSize(PDF_SIZE.watermark);
     doc.setTextColor(248, 248, 248);
@@ -122,7 +116,8 @@ export function addWatermark(doc) {
 
 /**
  * Adds the footer to the current page.
- * Called after all content is drawn on each page.
+ * Two items only: brand text on the left, page number on the right.
+ * Copyright line removed — it was clustering with the brand text at 7pt.
  */
 export function addFooter(doc, pageNum, totalPages) {
   const y = PAGE_HEIGHT - MARGIN.bottom + 6;
@@ -147,13 +142,6 @@ export function addFooter(doc, pageNum, totalPages) {
     PAGE_WIDTH - MARGIN.right,
     y,
     { align: "right", baseline: "top" }
-  );
-
-  doc.text(
-    `\u00A9 ${new Date().getFullYear()} NG CGPA. All rights reserved.`,
-    PAGE_WIDTH / 2,
-    y,
-    { align: "center", baseline: "top" }
   );
 }
 
