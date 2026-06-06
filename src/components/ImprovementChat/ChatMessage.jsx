@@ -179,7 +179,7 @@ function AssistantMessage({
         {isFromKnowledgeBase && !isFromCache && (
           <span
             className="assistant-message__kb-tag"
-            title="This answer comes from the built-in knowledge base. Connect to the internet for a personalised response."
+            title="This answer comes from the built-in knowledge base, personalised to your entered data."
           >
             Knowledge base
           </span>
@@ -202,12 +202,7 @@ function AssistantMessage({
           </span>
         )}
 
-        {isFromKnowledgeBase && !isFromCache && (
-          <span className="assistant-message__kb-note">
-            <IconInfo />
-            Connect to the internet for personalised advice.
-          </span>
-        )}
+        
       </div>
     </div>
   );

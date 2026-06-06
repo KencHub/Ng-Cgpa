@@ -302,7 +302,7 @@ function APIStatusDot({ online }) {
     <span
       className={`api-status-dot api-status-dot--${online ? "online" : "offline"}`}
       aria-label={online ? "AI available" : "AI unavailable"}
-      title={online ? "Academic Assistant is available" : "Academic Assistant is offline — using knowledge base"}
+      title={online ? "Academic Assistant is available" : "Knowledge Mode — fully offline"}
     >
       <span className="api-status-dot__ring" aria-hidden="true" />
     </span>
