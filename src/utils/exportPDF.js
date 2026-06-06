@@ -170,14 +170,12 @@ function buildPage1(doc, {
   const cgpaText  = cgpa !== null ? cgpa.toFixed(2) : "\u2014";
   const cgpaColor = degreeClass ? classColor(degreeClass) : PDF_COLOR.textMuted;
 
-  // Draw CGPA number first, then measure its width at the correct font
-  // size (28pt) before switching font for the "/ 5.0" label.
   doc.setFont(PDF_FONT.bold.family, PDF_FONT.bold.style);
   doc.setFontSize(PDF_SIZE.display);
   doc.setTextColor(...cgpaColor);
   doc.text(cgpaText, MARGIN.left, y, { baseline: "top" });
 
-  const cgpaWidth = doc.getTextWidth(cgpaText); // measured here while font is still 28pt bold
+  const cgpaWidth = doc.getTextWidth(cgpaText);
 
   if (cgpa !== null) {
     doc.setFont(PDF_FONT.regular.family, PDF_FONT.regular.style);
@@ -303,9 +301,6 @@ function buildPage2(doc, { semesterSummaries, institution, cgpa }) {
     margin:  { left: MARGIN.left, right: MARGIN.right },
     ...TABLE_STYLE.semesterBreakdown,
     columnStyles: {
-      // FIX: Column 0 reduced from 50 to 46, column 3 increased from 24 to 28.
-      // This gives "Semester GPA" header enough room to sit on one line
-      // without wrapping. Total remains 174mm which equals CONTENT_WIDTH.
       0: { cellWidth: 46 },
       1: { cellWidth: 22, halign: "right" },
       2: { cellWidth: 26, halign: "right" },
@@ -314,9 +309,6 @@ function buildPage2(doc, { semesterSummaries, institution, cgpa }) {
       5: { cellWidth: 26, halign: "center" },
     },
     didParseCell: (data) => {
-      // FIX: Explicitly align header cells to match their body column alignment.
-      // Without this, headStyles left-aligns all headers while body cells are
-      // right or center aligned, causing visible column misalignment.
       if (data.section === "head") {
         if ([1, 2, 3, 4].includes(data.column.index)) {
           data.cell.styles.halign = "right";
@@ -344,23 +336,43 @@ function buildPage2(doc, { semesterSummaries, institution, cgpa }) {
 // ── Pages 2+: Course Details ──────────────────────────────────────────────────
 
 /**
- * A course row is valid for export if it has a credit unit value greater than zero.
- * Rows without credit units are empty placeholders and must not appear in the PDF.
+ * A course has exportable data if it has a defined credit unit value (including 0)
+ * and at least a name, grade, or score present. The previous CU > 0 only check
+ * silently dropped 0 CU non-contributing courses from the PDF entirely.
  */
 function hasData(course) {
-  return course.creditUnits !== null &&
-         course.creditUnits !== undefined &&
-         Number(course.creditUnits) > 0;
+  if (course.creditUnits === null || course.creditUnits === undefined) return false;
+  const cu = Number(course.creditUnits);
+  if (isNaN(cu) || cu < 0) return false;
+
+  if (cu === 0) {
+    // Only include 0 CU courses that have at least some data entered.
+    // A completely blank row with CU accidentally set to 0 is not exported.
+    const hasName  = course.name && course.name.trim() !== "";
+    const hasGrade = course.grade != null && course.grade !== "";
+    const hasScore = course.score !== null && course.score !== undefined;
+    return hasName || hasGrade || hasScore;
+  }
+
+  return cu > 0;
 }
 
 function buildCourseDetailPages(doc, { semesters }) {
   let currentStartY = MARGIN.top + 10;
+
+  // The NC footnote is printed at most once across the entire course detail
+  // section — on the first semester that contains a 0 credit unit course.
+  // It does not repeat for subsequent semesters that also have NC courses.
+  let ncFootnoteAdded = false;
 
   for (const sem of semesters) {
     if (!Array.isArray(sem.courses) || sem.courses.length === 0) continue;
 
     const validCourses = sem.courses.filter(hasData);
     if (validCourses.length === 0) continue;
+
+    // Only true when this semester has at least one 0 CU course with data.
+    const hasNCCourses = validCourses.some((c) => Number(c.creditUnits) === 0);
 
     // Semester label heading
     autoTable(doc, {
@@ -378,19 +390,23 @@ function buildCourseDetailPages(doc, { semesters }) {
     });
 
     const rows = validCourses.map((course) => {
+      const isNC   = Number(course.creditUnits) === 0;
       const isFail = course.gradePoint === 0 ||
         (course.grade && course.grade.toUpperCase() === "F");
+
       return [
         course.name && course.name.trim() !== "" ? course.name.trim() : "Unnamed",
-        String(course.creditUnits ?? "\u2014"),
+        isNC ? "0 (NC)" : String(course.creditUnits ?? "\u2014"),
         course.score !== null && course.score !== undefined
           ? String(course.score)
           : "\u2014",
         course.grade   || "\u2014",
         course.gradePoint !== null ? String(course.gradePoint) : "\u2014",
-        course.qualityPoint !== null
-          ? round2(course.qualityPoint).toFixed(2)
-          : "\u2014",
+        isNC
+          ? "0.00"
+          : course.qualityPoint !== null
+            ? round2(course.qualityPoint).toFixed(2)
+            : "\u2014",
         isFail ? "Failed" : "Passed",
       ];
     });
@@ -411,9 +427,6 @@ function buildCourseDetailPages(doc, { semesters }) {
         6: { cellWidth: 21, halign: "center" },
       },
       didParseCell: (data) => {
-        // FIX: Explicitly align header cells to match their body column alignment.
-        // headStyles overrides halign on head cells, so without this the headers
-        // sit left while the data values sit right or center.
         if (data.section === "head") {
           if ([1, 2, 4, 5].includes(data.column.index)) {
             data.cell.styles.halign = "right";
@@ -422,17 +435,32 @@ function buildCourseDetailPages(doc, { semesters }) {
             data.cell.styles.halign = "center";
           }
         }
+
         if (data.section === "body") {
+          const course = validCourses[data.row.index];
+          const isNC   = course && Number(course.creditUnits) === 0;
+
+          // NC rows: muted italic across all columns except Status.
+          if (isNC && data.column.index !== 6) {
+            data.cell.styles.textColor = [154, 154, 154];
+            data.cell.styles.fontStyle = "italic";
+          }
+
           if (data.column.index === 6) {
             const val = data.cell.raw;
             if (val === "Failed") {
               data.cell.styles.textColor = PDF_COLOR.danger;
               data.cell.styles.fontStyle = "bold";
             } else {
-              data.cell.styles.textColor = PDF_COLOR.success;
+              data.cell.styles.textColor = isNC
+                ? [154, 154, 154]
+                : PDF_COLOR.success;
+              data.cell.styles.fontStyle = isNC ? "italic" : "normal";
             }
           }
-          if (data.column.index === 3) {
+
+          // Grade color only on non-NC rows
+          if (!isNC && data.column.index === 3) {
             const g = String(data.cell.raw).toUpperCase();
             if (g === "A") data.cell.styles.textColor = PDF_COLOR.classFirst;
             else if (g === "B") data.cell.styles.textColor = PDF_COLOR.classUpper;
@@ -442,12 +470,30 @@ function buildCourseDetailPages(doc, { semesters }) {
       },
     });
 
-    const afterY = doc.lastAutoTable.finalY;
-    if (afterY > PAGE_HEIGHT - 70) {
+    let tableEndY = doc.lastAutoTable.finalY;
+
+    // NC footnote — only when this semester has NC courses AND the footnote
+    // has not already been printed earlier in the document. Once printed
+    // it is never repeated even if later semesters also have NC courses.
+    if (hasNCCourses && !ncFootnoteAdded) {
+      tableEndY += 3;
+      doc.setFont(PDF_FONT.italic.family, PDF_FONT.italic.style);
+      doc.setFontSize(PDF_SIZE.small - 1);
+      doc.setTextColor(...PDF_COLOR.textMuted);
+      doc.text(
+        "NC = Non-contributing. 0 credit unit courses are recorded and graded but excluded from GPA and CGPA calculations.",
+        MARGIN.left,
+        tableEndY
+      );
+      tableEndY += 5;
+      ncFootnoteAdded = true;
+    }
+
+    if (tableEndY > PAGE_HEIGHT - 70) {
       doc.addPage();
       currentStartY = MARGIN.top + 10;
     } else {
-      currentStartY = afterY + 10;
+      currentStartY = tableEndY + 10;
     }
   }
 }

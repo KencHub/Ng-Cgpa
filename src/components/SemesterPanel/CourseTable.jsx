@@ -16,15 +16,14 @@ import CourseRow from "./CourseRow.jsx";
 
 
 // ── Column configuration ──────────────────────────────────────────────────────
-// Single source of truth for the header and the CSS grid template.
 
 const COLUMNS = [
-  { key: "name",   label: "Course",         hint: "Course code or name"  },
-  { key: "cu",     label: "CU",             hint: "Credit units (1–6)"   },
-  { key: "score",  label: "Score",          hint: "Exam score (0–100)"   },
-  { key: "grade",  label: "Grade",          hint: "Letter grade"         },
-  { key: "gp",     label: "GP",             hint: "Grade point (derived)"},
-  { key: "qp",     label: "QP",             hint: "Quality points (derived)"},
+  { key: "name",  label: "Course", hint: "Course code or name"     },
+  { key: "cu",    label: "CU",     hint: "Credit units (1–6)"      },
+  { key: "score", label: "Score",  hint: "Exam score (0–100)"      },
+  { key: "grade", label: "Grade",  hint: "Letter grade"            },
+  { key: "gp",    label: "GP",     hint: "Grade point (derived)"   },
+  { key: "qp",    label: "QP",     hint: "Quality points (derived)"},
 ];
 
 
@@ -40,15 +39,13 @@ export default function CourseTable({
   onUpdateCourse,
   onOpenImport,
 }) {
-  const isDisabled  = !institution;
-  const hasCourses  = courses.length > 0;
+  const isDisabled = !institution;
+  const hasCourses = courses.length > 0;
 
-  // Ref to the last added row — used to scroll it into view
-  const lastRowRef  = useRef(null);
+  const lastRowRef   = useRef(null);
   const prevCountRef = useRef(courses.length);
 
   useEffect(() => {
-    // When a new course is added (count increased), focus its name input
     if (courses.length > prevCountRef.current && lastRowRef.current) {
       const input = lastRowRef.current.querySelector("input[type='text']");
       if (input) {
@@ -95,7 +92,6 @@ export default function CourseTable({
             {col.label}
           </div>
         ))}
-        {/* Spacer for delete button column */}
         <div className="course-table__th course-table__th--actions" role="columnheader">
           <span className="sr-only">Actions</span>
         </div>
@@ -111,6 +107,7 @@ export default function CourseTable({
               ref={idx === courses.length - 1 ? lastRowRef : null}
               course={course}
               activeGradeTable={activeGradeTable}
+              institution={institution}
               rowIndex={idx}
               onUpdate={(courseId, changes) =>
                 onUpdateCourse(semesterId, courseId, changes)
@@ -173,19 +170,11 @@ function EmptyCoursesState({ onAdd, onImport }) {
         No courses yet. Add them one by one or paste a list.
       </p>
       <div className="course-table__empty-actions">
-        <button
-          className="btn btn-primary"
-          onClick={onAdd}
-          type="button"
-        >
+        <button className="btn btn-primary" onClick={onAdd} type="button">
           <IconPlus />
           Add Course
         </button>
-        <button
-          className="btn btn-secondary"
-          onClick={onImport}
-          type="button"
-        >
+        <button className="btn btn-secondary" onClick={onImport} type="button">
           <IconImport />
           Paste Courses
         </button>
@@ -202,8 +191,7 @@ function IconPlus() {
     <svg width="14" height="14" viewBox="0 0 14 14"
       fill="none" aria-hidden="true" focusable="false">
       <path d="M7 2v10M2 7h10"
-        stroke="currentColor" strokeWidth="1.8"
-        strokeLinecap="round" />
+        stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
     </svg>
   );
 }
@@ -232,11 +220,8 @@ function IconLock() {
       fill="none" aria-hidden="true" focusable="false">
       <rect x="5" y="11" width="14" height="10" rx="2"
         stroke="currentColor" strokeWidth="1.5" />
-      <path
-        d="M8 11V7a4 4 0 0 1 8 0v4"
-        stroke="currentColor" strokeWidth="1.5"
-        strokeLinecap="round"
-      />
+      <path d="M8 11V7a4 4 0 0 1 8 0v4"
+        stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
       <circle cx="12" cy="16" r="1.5" fill="currentColor" />
     </svg>
   );

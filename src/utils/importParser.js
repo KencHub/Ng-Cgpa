@@ -8,26 +8,14 @@
 // Mixed formats within a single import are accepted.
 // Each line is evaluated independently.
 //
+// Credit units of 0 are accepted for non-contributing courses (e.g. GST115).
+// These courses are recorded but excluded from all GPA and CGPA calculations.
+//
 // Returns a structured result object with valid courses and a skip report.
 
 
 // ── Main Parser ───────────────────────────────────────────────────────────────
 
-/**
- * Parses multi-line import text into a list of course objects.
- *
- * @param {string} rawText         - The pasted import text
- * @param {Array}  gradeTable      - Institution's gradeTable array
- * @param {Function} generateId   - ID generator function (returns a unique string)
- *
- * @returns {ImportResult}
- * {
- *   courses:  Array of valid course objects ready to add to a semester
- *   skipped:  Array of { line, lineNumber, reason } for the summary display
- *   total:    Total lines attempted
- *   imported: Count of successfully parsed courses
- * }
- */
 export function parseImportText(rawText, gradeTable, generateId) {
   if (!rawText || typeof rawText !== "string") {
     return emptyResult();
@@ -70,25 +58,12 @@ export function parseImportText(rawText, gradeTable, generateId) {
 
 // ── Line Parser ───────────────────────────────────────────────────────────────
 
-/**
- * Parses a single line of import text.
- *
- * Expected format: "CourseName, CreditUnits, ScoreOrGrade"
- * Also accepts tab-separated fields.
- *
- * @param {string}   line
- * @param {Array}    gradeTable
- * @param {Function} generateId
- * @returns {{ valid: boolean, course?: Object, reason?: string }}
- */
 function parseLine(line, gradeTable, generateId) {
-  // Normalise separators: allow commas or tabs
   const parts = line
     .split(/,|\t/)
     .map((p) => p.trim())
     .filter((p) => p.length > 0);
 
-  // Must have at least 3 fields
   if (parts.length < 3) {
     return {
       valid: false,
@@ -96,9 +71,9 @@ function parseLine(line, gradeTable, generateId) {
     };
   }
 
-  const rawName   = parts[0];
-  const rawCU     = parts[1];
-  const rawThird  = parts[2];
+  const rawName  = parts[0];
+  const rawCU    = parts[1];
+  const rawThird = parts[2];
 
   // ── Course name ───────────────────────────────────────────────────────────
   const name = rawName.trim();
@@ -113,11 +88,12 @@ function parseLine(line, gradeTable, generateId) {
   }
 
   // ── Credit units ──────────────────────────────────────────────────────────
+  // 0 is valid for non-contributing courses (e.g. GST115 at UNIZIK).
   const cu = parseInt(rawCU, 10);
-  if (isNaN(cu) || cu < 1 || cu > 6 || !Number.isInteger(cu)) {
+  if (isNaN(cu) || cu < 0 || cu > 6 || !Number.isInteger(cu)) {
     return {
       valid: false,
-      reason: `Credit units "${rawCU}" is invalid. Must be a whole number between 1 and 6.`,
+      reason: `Credit units "${rawCU}" is invalid. Must be a whole number between 0 and 6. Use 0 only for non-contributing courses (e.g. GST115).`,
     };
   }
 
@@ -141,7 +117,6 @@ function parseLine(line, gradeTable, generateId) {
       };
     }
 
-    // Resolve grade from score using the institution's grade table
     const gradeEntry = resolveGradeFromScore(score, gradeTable);
     if (!gradeEntry) {
       return {
@@ -159,8 +134,8 @@ function parseLine(line, gradeTable, generateId) {
         score,
         grade: gradeEntry.letter,
         gradePoint: gradeEntry.point,
-        qualityPoint: cu * gradeEntry.point,
-        status: gradeEntry.point === 0 ? "failed" : "passed",
+        qualityPoint: cu === 0 ? 0 : cu * gradeEntry.point,
+        status: cu === 0 ? "non_contributing" : gradeEntry.point === 0 ? "failed" : "passed",
       }),
     };
   }
@@ -180,7 +155,6 @@ function parseLine(line, gradeTable, generateId) {
       };
     }
 
-    // Use the minimum score for the grade as a representative value
     const score = gradeEntry.min;
 
     return {
@@ -192,8 +166,8 @@ function parseLine(line, gradeTable, generateId) {
         score,
         grade: gradeEntry.letter,
         gradePoint: gradeEntry.point,
-        qualityPoint: cu * gradeEntry.point,
-        status: gradeEntry.point === 0 ? "failed" : "passed",
+        qualityPoint: cu === 0 ? 0 : cu * gradeEntry.point,
+        status: cu === 0 ? "non_contributing" : gradeEntry.point === 0 ? "failed" : "passed",
       }),
     };
   }
@@ -204,28 +178,13 @@ function parseLine(line, gradeTable, generateId) {
 
 // ── Input Type Detection ──────────────────────────────────────────────────────
 
-/**
- * Detects whether the third field of an import line is a score or a grade letter.
- *
- * Rules:
- *  - If the trimmed value is a finite number: "score"
- *  - If the trimmed value is 1–2 letters covering all supported grade systems
- *    (A–H for 7.0 scale, A–F for 5.0/4.0, AB/BC for AUN): "grade"
- *  - Otherwise: "invalid"
- *
- * @param {string} value
- * @returns {"score" | "grade" | "invalid"}
- */
 export function detectInputType(value) {
   if (!value || typeof value !== "string") return "invalid";
   const trimmed = value.trim();
   if (trimmed === "") return "invalid";
 
-  // Numeric check: handles integers and decimals
   if (!isNaN(trimmed) && trimmed !== "") return "score";
 
-  // Grade letter check: 1–2 characters, letters only
-  // Covers A–H (7.0 legacy scale), A–F (standard), AB/BC (AUN American)
   if (/^[A-Ha-h]{1,2}$/.test(trimmed)) return "grade";
 
   return "invalid";
@@ -234,17 +193,6 @@ export function detectInputType(value) {
 
 // ── Preview Generator ─────────────────────────────────────────────────────────
 
-/**
- * Generates a lightweight preview of what would be imported.
- * Used in the import modal before the user confirms.
- *
- * Returns the same structure as parseImportText but for display only —
- * IDs in the preview are temporary and will be regenerated on actual import.
- *
- * @param {string} rawText
- * @param {Array}  gradeTable
- * @returns {ImportResult}
- */
 export function previewImport(rawText, gradeTable) {
   let counter = 0;
   const tempId = () => `preview-${++counter}`;
@@ -254,12 +202,6 @@ export function previewImport(rawText, gradeTable) {
 
 // ── Import Summary Message ────────────────────────────────────────────────────
 
-/**
- * Builds the human-readable summary shown after import completes.
- *
- * @param {ImportResult} result
- * @returns {string}
- */
 export function buildImportSummary(result) {
   const { imported, skipped, total } = result;
 
@@ -268,8 +210,7 @@ export function buildImportSummary(result) {
   let msg = `${imported} ${imported === 1 ? "course" : "courses"} imported.`;
 
   if (skipped.length > 0) {
-    msg +=
-      ` ${skipped.length} ${skipped.length === 1 ? "line was" : "lines were"} skipped:`;
+    msg += ` ${skipped.length} ${skipped.length === 1 ? "line was" : "lines were"} skipped:`;
     for (const skip of skipped) {
       msg += `\n  Line ${skip.lineNumber}: "${skip.line}" — ${skip.reason}`;
     }
@@ -281,13 +222,6 @@ export function buildImportSummary(result) {
 
 // ── Format Guide ─────────────────────────────────────────────────────────────
 
-/**
- * Returns the format guide string shown in the ImportModal.
- * Kept here so the guide and the parser are always in sync.
- *
- * @param {Array} gradeTable - Institution's gradeTable (used to show valid grades)
- * @returns {string}
- */
 export function getFormatGuide(gradeTable) {
   const validGrades = Array.isArray(gradeTable)
     ? gradeTable.map((g) => g.letter).join(", ")
@@ -300,7 +234,7 @@ export function getFormatGuide(gradeTable) {
     `Grade format:   CourseName, CreditUnits, Grade\n` +
     `                Example: MTH101, 3, A\n\n` +
     `Valid grades for your institution: ${validGrades}\n` +
-    `Credit units must be a whole number between 1 and 6.\n` +
+    `Credit units must be a whole number between 0 and 6. Use 0 for courses with no credit weight (they are recorded but excluded from all calculations).\n` +
     `Score must be between 0 and 100.\n` +
     `Both formats can be mixed in the same import.`
   );
@@ -320,14 +254,15 @@ function resolveGradeFromScore(score, gradeTable) {
 
 function buildCourse(fields) {
   return {
-    id:           fields.id,
-    name:         fields.name,
-    creditUnits:  fields.creditUnits,
-    score:        fields.score ?? null,
-    grade:        fields.grade ?? null,
-    gradePoint:   fields.gradePoint ?? null,
-    qualityPoint: fields.qualityPoint ?? null,
-    status:       fields.status ?? "pending",
+    id:              fields.id,
+    name:            fields.name,
+    creditUnits:     fields.creditUnits,
+    score:           fields.score ?? null,
+    grade:           fields.grade ?? null,
+    gradePoint:      fields.gradePoint ?? null,
+    qualityPoint:    fields.qualityPoint ?? null,
+    status:          fields.status ?? "pending",
+    nonContributing: fields.creditUnits === 0,
   };
 }
 

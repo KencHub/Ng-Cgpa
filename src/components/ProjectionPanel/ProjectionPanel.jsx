@@ -212,7 +212,7 @@ function BackwardSection({
 
   return (
     <div className="projection-section">
-      <p className="projection-section__label label">Target CGPA</p>
+    
 
       {/* Three inputs */}
       <div className="projection-inputs">

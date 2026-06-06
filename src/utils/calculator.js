@@ -14,10 +14,6 @@
 /**
  * Maps a numeric score to a grade entry using the institution's grade table.
  *
- * The table is iterated from highest min downward. The first entry whose
- * min is <= score is returned. This handles all scale groups correctly,
- * including custom schools with non-standard boundaries.
- *
  * @param {number} score - Numeric score 0–100
  * @param {Array}  gradeTable - Institution's gradeTable array
  * @returns {Object|null} Matching grade entry, or null if no match
@@ -27,8 +23,6 @@ export function scoreToGrade(score, gradeTable) {
   if (!Array.isArray(gradeTable) || gradeTable.length === 0) return null;
 
   const clamped = Math.round(Math.max(0, Math.min(100, score)));
-
-  // Sort a copy highest-first so the function is order-independent of the input
   const sorted = [...gradeTable].sort((a, b) => b.min - a.min);
 
   for (const entry of sorted) {
@@ -45,11 +39,10 @@ export function scoreToGrade(score, gradeTable) {
 
 /**
  * Returns the minimum score for a given grade letter.
- * Used to pre-fill the score field when a student selects a grade directly.
  *
- * @param {string} letter - Grade letter, e.g. "A", "B"
- * @param {Array}  gradeTable - Institution's gradeTable array
- * @returns {number|null} Minimum score for that grade, or null if not found
+ * @param {string} letter
+ * @param {Array}  gradeTable
+ * @returns {number|null}
  */
 export function gradeToMinScore(letter, gradeTable) {
   if (!letter || !Array.isArray(gradeTable)) return null;
@@ -65,9 +58,9 @@ export function gradeToMinScore(letter, gradeTable) {
 /**
  * Returns the grade point for a given grade letter.
  *
- * @param {string} letter - Grade letter
- * @param {Array}  gradeTable - Institution's gradeTable array
- * @returns {number|null} Grade point value, or null if not found
+ * @param {string} letter
+ * @param {Array}  gradeTable
+ * @returns {number|null}
  */
 export function gradeLetterToPoint(letter, gradeTable) {
   if (!letter || !Array.isArray(gradeTable)) return null;
@@ -105,14 +98,11 @@ export function computeQualityPoint(creditUnits, gradePoint) {
  * Computes the GPA for a single semester.
  *   semesterGPA = sum(qualityPoints) / sum(creditUnits)
  *
- * Returns null — not 0 — when there are no valid courses.
- * This distinction prevents false CGPA drag from empty or incomplete semesters.
+ * Returns null when there are no valid courses.
+ * Courses with 0 credit units are excluded from this sum.
  *
- * Only courses with both a valid creditUnits and a resolved gradePoint
- * (including 0 for F) are included.
- *
- * @param {Array} courses - Array of course objects for one semester
- * @param {Array} gradeTable - Institution's gradeTable array
+ * @param {Array} courses
+ * @param {Array} gradeTable
  * @returns {number|null}
  */
 export function computeSemesterGPA(courses, gradeTable) {
@@ -155,13 +145,11 @@ export function computeSemesterGPA(courses, gradeTable) {
  *
  *   CGPA = sum(all qualityPoints) / sum(all creditUnits)
  *
- * NOT the average of semester GPAs. That formula produces incorrect results
- * whenever credit unit loads differ between semesters.
+ * NOT the average of semester GPAs.
+ * Courses with 0 credit units are excluded from both sums.
  *
- * Returns null when no valid data exists across any semester.
- *
- * @param {Array} semesters - Array of semester objects, each with a courses array
- * @param {Array} gradeTable - Institution's gradeTable array
+ * @param {Array} semesters
+ * @param {Array} gradeTable
  * @returns {number|null}
  */
 export function computeCGPA(semesters, gradeTable) {
@@ -204,8 +192,8 @@ export function computeCGPA(semesters, gradeTable) {
 // ── Running Totals ────────────────────────────────────────────────────────────
 
 /**
- * Returns the total credit units and total quality points across all semesters.
- * Only courses with a resolved grade point are counted.
+ * Returns total credit units and total quality points across all semesters.
+ * Courses with 0 credit units are excluded.
  *
  * @param {Array} semesters
  * @param {Array} gradeTable
@@ -250,20 +238,16 @@ export function computeTotals(semesters, gradeTable) {
 
 /**
  * Returns the classification entry for a given CGPA.
- *
- * Iterates the classifications array from highest to lowest.
  * If CGPA is exactly on a boundary, it is assigned to the higher class.
- * This matches standard Nigerian university practice.
  *
  * @param {number|null} cgpa
- * @param {Array} classifications - Institution's classifications array
- * @returns {Object|null} Matching classification entry, or null
+ * @param {Array} classifications
+ * @returns {Object|null}
  */
 export function getClassification(cgpa, classifications) {
   if (cgpa === null || cgpa === undefined || isNaN(cgpa)) return null;
   if (!Array.isArray(classifications) || classifications.length === 0) return null;
 
-  // Sort a copy highest-first so the function is order-independent of input
   const sorted = [...classifications].sort((a, b) => b.min - a.min);
 
   for (const entry of sorted) {
@@ -279,18 +263,26 @@ export function getClassification(cgpa, classifications) {
 // ── Resolved Course Data ──────────────────────────────────────────────────────
 
 /**
- * Takes a raw course object and resolves its grade, gradePoint, and qualityPoint
- * from the institution's grade table. Returns a new object — never mutates input.
+ * Takes a raw course object and resolves grade, gradePoint, qualityPoint,
+ * status, and nonContributing flag. Returns a new object — never mutates input.
  *
- * Priority: gradePoint already set > score > grade letter
+ * KEY BEHAVIOUR FOR 0 CU COURSES:
+ * - nonContributing is set to true
+ * - qualityPoint is 0 (not null)
+ * - status is still "passed" or "failed" based on the actual grade
+ *   because a 0 CU course can still be compulsory and the student's
+ *   result matters even though it does not affect CGPA
+ * - The cu <= 0 guards in computeSemesterGPA, computeCGPA, and computeTotals
+ *   ensure these courses never enter any GPA or CGPA sum
  *
  * @param {Object} course
  * @param {Array}  gradeTable
- * @returns {Object} Course with resolved grade, gradePoint, qualityPoint, status
+ * @returns {Object}
  */
 export function resolveCourse(course, gradeTable) {
   const cu = parseFloat(course.creditUnits);
-  const validCU = !isNaN(cu) && cu > 0;
+  const validCU = !isNaN(cu) && cu >= 0;
+  const isZeroCU = validCU && cu === 0;
 
   let gradeEntry = null;
 
@@ -304,7 +296,15 @@ export function resolveCourse(course, gradeTable) {
 
   const gradePoint = gradeEntry ? gradeEntry.point : null;
   const gradeLetter = gradeEntry ? gradeEntry.letter : (course.grade || null);
-  const qualityPoint = (validCU && gradePoint !== null) ? cu * gradePoint : null;
+
+  // 0 CU courses get qualityPoint = 0, not null.
+  // Non-zero CU courses get cu * gradePoint if both are resolved, else null.
+  const qualityPoint = isZeroCU
+    ? 0
+    : (validCU && gradePoint !== null) ? cu * gradePoint : null;
+
+  // Status reflects the actual grade result regardless of credit units.
+  // A student can pass or fail a 0 CU compulsory course.
   const status = gradeEntry
     ? (gradeEntry.point === 0 ? "failed" : "passed")
     : "pending";
@@ -315,6 +315,7 @@ export function resolveCourse(course, gradeTable) {
     gradePoint,
     qualityPoint,
     status,
+    nonContributing: isZeroCU,
   };
 }
 
@@ -324,7 +325,7 @@ export function resolveCourse(course, gradeTable) {
 /**
  * Returns a summary object for a single semester.
  *
- * @param {Object} semester - Semester with courses array
+ * @param {Object} semester
  * @param {Array}  gradeTable
  * @returns {{ totalCU, totalQP, gpa }}
  */
@@ -354,14 +355,11 @@ export function computeSemesterSummary(semester, gradeTable) {
 /**
  * Calculates the CGPA impact of retaking a failed course.
  *
- * Shows: "If you retake [course] and earn a [targetGrade], your CGPA
- * would increase by approximately [delta]."
- *
- * @param {Object} failedCourse   - The course with grade F (gradePoint = 0)
- * @param {string} targetGrade    - Target grade letter, e.g. "C"
- * @param {number} currentTotalCU - Total credit units already in the CGPA
- * @param {number} currentTotalQP - Total quality points already in the CGPA
- * @param {Array}  gradeTable     - Institution's gradeTable array
+ * @param {Object} failedCourse
+ * @param {string} targetGrade
+ * @param {number} currentTotalCU
+ * @param {number} currentTotalQP
+ * @param {Array}  gradeTable
  * @returns {{ currentCGPA, projectedCGPA, delta, targetGradePoint } | null}
  */
 export function computeCarryoverImpact(
@@ -384,8 +382,6 @@ export function computeCarryoverImpact(
     ? round4(currentTotalQP / currentTotalCU)
     : null;
 
-  // After retake, the failed course now contributes targetGradePoint * cu
-  // instead of 0. Total CU stays the same.
   const gainedQP = targetEntry.point * cu;
   const newTotalQP = currentTotalQP + gainedQP;
   const projectedCGPA = round4(newTotalQP / currentTotalCU);
@@ -405,7 +401,7 @@ export function computeCarryoverImpact(
 // ── Validation Helpers ────────────────────────────────────────────────────────
 
 /**
- * Returns true if a score value is valid for the app.
+ * Returns true if a score value is valid.
  * @param {*} value
  * @returns {boolean}
  */
@@ -416,12 +412,13 @@ export function isValidScore(value) {
 
 /**
  * Returns true if the credit unit value is valid.
+ * 0 is allowed for non-contributing courses.
  * @param {*} value
  * @returns {boolean}
  */
 export function isValidCreditUnit(value) {
   const n = parseInt(value, 10);
-  return !isNaN(n) && n >= 1 && n <= 6 && Number.isInteger(n);
+  return !isNaN(n) && n >= 0 && n <= 6 && Number.isInteger(n);
 }
 
 /**
@@ -440,29 +437,14 @@ export function isValidGradeLetter(letter, gradeTable) {
 
 // ── Rounding ──────────────────────────────────────────────────────────────────
 
-/**
- * Rounds a number to 4 decimal places.
- * Used internally to prevent floating-point drift in CGPA.
- */
 function round4(n) {
   return Math.round(n * 10000) / 10000;
 }
 
-/**
- * Rounds a number to 2 decimal places for display.
- * @param {number} n
- * @returns {number}
- */
 export function round2(n) {
   return Math.round(n * 100) / 100;
 }
 
-/**
- * Formats a CGPA or GPA number to 2 decimal places as a string.
- * Returns "—" if null or NaN.
- * @param {number|null} n
- * @returns {string}
- */
 export function formatGPA(n) {
   if (n === null || n === undefined || isNaN(n)) return "—";
   return n.toFixed(2);

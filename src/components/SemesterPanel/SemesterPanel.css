@@ -133,7 +133,6 @@
   font-style: italic;
 }
 
-/* Hide GPA label text on narrow screens */
 @media (max-width: 479px) {
   .semester-header__gpa-label {
     display: none;
@@ -293,25 +292,20 @@
 }
 
 
-/* ── Column grid (shared by header and all rows) ──────────────────────────────
-   8 explicit columns.
-   Cell --actions in the header spans columns 7–8.
-   Cell --badge  in rows occupies column 7.
-   Cell --delete in rows occupies column 8.
-   ─────────────────────────────────────────────────────────────────────────── */
+/* ── Column grid ──────────────────────────────────────────────────────────────── */
 
 .course-table__header,
 .course-row {
   display: grid;
   grid-template-columns:
-    minmax(100px, 1fr)   /* 1: name   */
-    48px                 /* 2: cu     */
-    70px                 /* 3: score  */
-    62px                 /* 4: grade  */
-    50px                 /* 5: gp     */
-    54px                 /* 6: qp     */
-    22px                 /* 7: badge  */
-    34px;                /* 8: delete */
+    minmax(100px, 1fr)
+    48px
+    70px
+    62px
+    50px
+    54px
+    22px
+    34px;
   align-items: start;
   gap: 0 var(--space-1);
 }
@@ -341,14 +335,13 @@
   align-items: center;
 }
 
-/* Explicit column placements for header cells */
 .course-table__th--name    { grid-column: 1; }
 .course-table__th--cu      { grid-column: 2; justify-content: center; }
 .course-table__th--score   { grid-column: 3; justify-content: center; }
 .course-table__th--grade   { grid-column: 4; justify-content: center; }
 .course-table__th--gp      { grid-column: 5; justify-content: center; }
 .course-table__th--qp      { grid-column: 6; justify-content: center; }
-.course-table__th--actions { grid-column: 7 / 9; } /* spans badge + delete */
+.course-table__th--actions { grid-column: 7 / 9; }
 
 
 /* ── Course table body ─────────────────────────────────────────────────────── */
@@ -472,6 +465,24 @@
   background-color: rgba(193, 18, 31, 0.045);
 }
 
+.course-row--noncontrib {
+  opacity: 0.72;
+  background-color: var(--color-surface);
+}
+
+.course-row--noncontrib:hover {
+  opacity: 1;
+  background-color: var(--color-surface-2);
+}
+
+.course-row--noncontrib-fail {
+  background-color: rgba(193, 18, 31, 0.012);
+}
+
+.course-row--noncontrib-fail:hover {
+  background-color: rgba(193, 18, 31, 0.025);
+}
+
 
 /* ── Row cell base ────────────────────────────────────────────────────────────── */
 
@@ -483,7 +494,6 @@
   padding-top: var(--space-1);
 }
 
-/* Explicit column placements for row cells */
 .course-row__cell--name   { grid-column: 1; }
 .course-row__cell--cu     { grid-column: 2; }
 .course-row__cell--score  { grid-column: 3; }
@@ -527,12 +537,24 @@
   box-shadow: 0 0 0 3px rgba(193, 18, 31, 0.10);
 }
 
+.course-input--warn {
+  border-color: var(--color-warning);
+  background-color: var(--color-warning-light);
+  color: var(--color-warning);
+}
+
+.course-input--warn:focus {
+  background-color: #fff;
+  border-color: var(--color-warning);
+  box-shadow: 0 0 0 3px rgba(188, 108, 37, 0.12);
+  color: var(--color-text-primary);
+}
+
 .course-input--center {
   text-align: center;
   padding: 0 var(--space-1);
 }
 
-/* Remove number input spinners */
 .course-input[type="number"]::-webkit-inner-spin-button,
 .course-input[type="number"]::-webkit-outer-spin-button {
   -webkit-appearance: none;
@@ -543,7 +565,6 @@
   -moz-appearance: textfield;
 }
 
-/* Select — custom arrow */
 .course-input--select {
   -webkit-appearance: none;
   appearance: none;
@@ -552,6 +573,71 @@
   background-position: center right 6px;
   padding-right: 20px;
   cursor: pointer;
+}
+
+
+/* ── CU input wrapper ─────────────────────────────────────────────────────────
+   No longer needs position:relative. NC badge moved to the name cell.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+.cu-input-wrap {
+  width: 100%;
+}
+
+
+/* ── Name cell wrapper ────────────────────────────────────────────────────────
+   Flex row: name input stretches, NC badge sits inline to its right.
+   NC badge never overlaps any input field.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+.course-name-wrap {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  width: 100%;
+}
+
+.course-name-wrap .course-input {
+  flex: 1;
+  min-width: 0;
+}
+
+
+/* ── NC badge ─────────────────────────────────────────────────────────────────
+   Inline amber pill to the right of the course name input.
+   Tooltip is a portal (InfoPopover) — never overflows any container.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+.cu-nc-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+
+  height: 20px;
+  padding: 0 5px;
+  background-color: var(--color-warning);
+  color: #fff;
+  font-size: 7px;
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.04em;
+  line-height: 1;
+  border-radius: 3px;
+  border: none;
+
+  cursor: pointer;
+  user-select: none;
+  outline: none;
+  transition: background-color var(--transition-fast);
+}
+
+.cu-nc-badge:hover {
+  background-color: var(--color-accent-dark);
+}
+
+.cu-nc-badge:focus-visible {
+  outline: 2px solid var(--color-warning);
+  outline-offset: 2px;
 }
 
 
@@ -573,6 +659,12 @@
 
 .course-row__derived--fail {
   color: var(--color-danger);
+}
+
+.course-row__derived--muted {
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-regular);
+  font-style: italic;
 }
 
 
@@ -610,13 +702,25 @@
 }
 
 
-/* ── Carryover badge ─────────────────────────────────────────────────────────── */
+/* ── Carryover badge ──────────────────────────────────────────────────────────
+   Portal-anchored tooltip. No overflow CSS needed here.
+   ─────────────────────────────────────────────────────────────────────────── */
 
 .carryover-badge {
   position: relative;
   display: inline-flex;
   align-items: center;
-  cursor: default;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  border-radius: var(--radius-pill);
+  outline: none;
+}
+
+.carryover-badge:focus-visible {
+  outline: 2px solid var(--color-danger);
+  outline-offset: 2px;
 }
 
 .carryover-badge__label {
@@ -632,30 +736,50 @@
   font-weight: var(--font-weight-bold);
   letter-spacing: 0;
   flex-shrink: 0;
+  transition: background-color var(--transition-fast);
 }
 
-.carryover-badge__tooltip {
-  width: 240px;
-  bottom: calc(100% + 6px);
-  left: 50%;
-  transform: translateX(-50%);
-  white-space: normal;
+.carryover-badge:hover .carryover-badge__label {
+  background-color: #a00f1a;
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   PORTAL POPOVER (InfoPopover)
+   Renders via ReactDOM.createPortal into document.body.
+   position: fixed — never clipped by any parent overflow.
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+.info-popover {
+  background-color: #1C1C1C;
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.30),
+              0 2px 8px  rgba(0, 0, 0, 0.16);
+  animation: infoPop 130ms ease forwards;
+  overflow: visible;
+}
+
+@keyframes infoPop {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.info-popover__body {
   font-size: var(--font-size-xs);
   line-height: var(--line-height-relaxed);
+  color: #EDEDED;
 }
 
-.carryover-badge:hover .carryover-badge__tooltip,
-.carryover-badge:focus-within .carryover-badge__tooltip {
-  display: block;
-}
-
-/* Reposition tooltip if it would overflow right edge on mobile */
-@media (max-width: 480px) {
-  .carryover-badge__tooltip {
-    left: auto;
-    right: 0;
-    transform: none;
-  }
+.info-popover__arrow {
+  position: absolute;
+  bottom: -5px;
+  width: 10px;
+  height: 10px;
+  background-color: #1C1C1C;
+  border-radius: 1px;
+  transform: translateX(-50%) rotate(45deg);
+  pointer-events: none;
 }
 
 
@@ -664,18 +788,17 @@
    ══════════════════════════════════════════════════════════════════════════════ */
 
 @media (max-width: 539px) {
-  /* Compact grid for small screens */
   .course-table__header,
   .course-row {
     grid-template-columns:
-      minmax(72px, 1fr)  /* 1: name   */
-      36px               /* 2: cu     */
-      56px               /* 3: score  */
-      50px               /* 4: grade  */
-      36px               /* 5: gp     */
-      40px               /* 6: qp     */
-      18px               /* 7: badge  */
-      30px;              /* 8: delete */
+      minmax(72px, 1fr)
+      36px
+      56px
+      50px
+      36px
+      40px
+      18px
+      30px;
     gap: 0 2px;
     padding: var(--space-1) var(--space-2);
   }
@@ -721,34 +844,31 @@
   .semester-header__label {
     font-size: var(--font-size-base);
   }
+
+  /* NC badge shrinks with the name column on mobile */
+  .cu-nc-badge {
+    font-size: 6px;
+    height: 18px;
+    padding: 0 4px;
+  }
 }
 
 @media (max-width: 374px) {
-  /* Smallest phones (Galaxy A series, older iPhones) */
-  .course-table__header,
-  .course-row {
-    grid-template-columns:
-      minmax(60px, 1fr) 32px 52px 46px 32px 36px 16px 28px;
-    gap: 0 1px;
-  }
-
-  /* Hide GP column header and derived value on very small screens */
-  .course-table__th--gp,
-  .course-row__cell--gp {
-    display: none;
-  }
-
-  /* Adjust column count */
   .course-table__header,
   .course-row {
     grid-template-columns:
       minmax(60px, 1fr) 34px 54px 48px 42px 16px 28px;
   }
 
-  .course-table__th--cu    { grid-column: 2; }
-  .course-table__th--score { grid-column: 3; }
-  .course-table__th--grade { grid-column: 4; }
-  .course-table__th--qp    { grid-column: 5; }
+  .course-table__th--gp,
+  .course-row__cell--gp {
+    display: none;
+  }
+
+  .course-table__th--cu      { grid-column: 2; }
+  .course-table__th--score   { grid-column: 3; }
+  .course-table__th--grade   { grid-column: 4; }
+  .course-table__th--qp      { grid-column: 5; }
   .course-table__th--actions { grid-column: 6 / 8; }
 
   .course-row__cell--cu     { grid-column: 2; }
