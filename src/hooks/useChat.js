@@ -62,19 +62,57 @@ export function useChat({
   // ── Build flat context object for the Groq API system prompt ─────────────────
 
   const buildAPIContext = useCallback(() => {
+
+    // Semester GPA list
     const semGPAs = (semesters ?? [])
       .map((s, i) => {
-        const totalQP = (s.courses ?? []).reduce((sum, c) => sum + (c.qualityPoint ?? 0), 0);
-        const totalCU = (s.courses ?? []).reduce((sum, c) => sum + (c.creditUnits  ?? 0), 0);
-        if (totalCU === 0) return null;
-        return `Sem ${i + 1}: ${(totalQP / totalCU).toFixed(2)}`;
+        const qp = (s.courses ?? []).reduce((sum, c) => sum + (Number(c.qualityPoint) || 0), 0);
+        const cu = (s.courses ?? []).reduce((sum, c) => sum + (Number(c.creditUnits)  || 0), 0);
+        if (cu === 0) return null;
+        return `Sem ${i + 1}: ${(qp / cu).toFixed(2)}`;
       })
       .filter(Boolean)
       .join(", ");
 
+    // Totals from raw course data
+    const calcTotalCU = (semesters ?? []).reduce((sum, s) =>
+      sum + (s.courses ?? []).reduce((acc, c) => acc + (Number(c.creditUnits) || 0), 0), 0);
+
+    const calcTotalQP = (semesters ?? []).reduce((sum, s) =>
+      sum + (s.courses ?? []).reduce((acc, c) => acc + (Number(c.qualityPoint) || 0), 0), 0);
+
+    // School boundaries
+    const scale           = institution?.scale ?? 5;
+    const classifications = institution?.classifications ?? [];
+
+    const firstMin  = classifications.find(c =>
+      c.label?.toLowerCase().includes("first"))?.min ?? (scale >= 5 ? 4.50 : 3.50);
+    const upperMin  = classifications.find(c =>
+      c.short?.includes("2:1") || c.label?.toLowerCase().includes("upper"))?.min ?? (scale >= 5 ? 3.50 : 3.00);
+    const lowerMin  = classifications.find(c =>
+      c.short?.includes("2:2") || c.label?.toLowerCase().includes("lower"))?.min ?? (scale >= 5 ? 2.40 : 2.00);
+    const thirdMin  = classifications.find(c =>
+      c.label?.toLowerCase().includes("third"))?.min ?? (scale >= 5 ? 1.50 : 1.00);
+
+    // Required GPA calculator
+    function reqGPA(targetCGPA, futureCU) {
+      if (calcTotalCU === 0 || futureCU === 0) return null;
+      const neededQP = targetCGPA * (calcTotalCU + futureCU) - calcTotalQP;
+      const gpa = neededQP / futureCU;
+      return Math.round(gpa * 100) / 100;
+    }
+
+    // Pre-calculated figures for 15, 18, 20 CU scenarios
+    function fmt(val) {
+      if (val === null) return "N/A";
+      if (val > scale)  return `Not achievable in one semester (requires ${val.toFixed(2)}, above ${scale} scale max)`;
+      if (val < 0)      return "Already achieved";
+      return val.toFixed(2);
+    }
+
+    // Borderline
     const borderlineInfo = (() => {
       if (cgpa === null || cgpa === undefined) return "No data";
-      const classifications = institution?.classifications ?? [];
       for (const cls of classifications) {
         if (cgpa >= cls.min && cgpa < cls.min + 0.10) {
           return `Within 0.10 of ${cls.label} (boundary: ${cls.min})`;
@@ -83,19 +121,55 @@ export function useChat({
       return "Not borderline";
     })();
 
+    // Max achievable CGPA (perfect score every remaining semester)
+    function maxCGPA(futureSems, cuPerSem) {
+      if (calcTotalCU === 0) return null;
+      const futCU = futureSems * cuPerSem;
+      return Math.round(((calcTotalQP + scale * futCU) / (calcTotalCU + futCU)) * 100) / 100;
+    }
+
     return {
-      institutionName:    institution?.name     ?? null,
-      scale:              institution?.scale    ?? 5,
+      institutionName:    institution?.name  ?? null,
+      scale,
       passmark:           institution?.passmark ?? 40,
       cgpa:               cgpa ?? null,
       degreeClass:        degreeClass ?? null,
       semesterCount:      (semesters ?? []).length,
-      totalCreditUnits:   totals?.totalCU ?? 0,
-      totalQualityPoints: totals?.totalQP ?? 0,
+      totalCreditUnits:   calcTotalCU,
+      totalQualityPoints: calcTotalQP,
       semesterGPAList:    semGPAs || "None yet",
       borderlineInfo,
+
+      // Class boundaries
+      firstClassMin:  firstMin,
+      upperSecMin:    upperMin,
+      lowerSecMin:    lowerMin,
+      thirdClassMin:  thirdMin,
+
+      // Pre-calculated required GPAs — Groq reads these directly
+      toFirstClass: {
+        at15CU: fmt(reqGPA(firstMin, 15)),
+        at18CU: fmt(reqGPA(firstMin, 18)),
+        at20CU: fmt(reqGPA(firstMin, 20)),
+      },
+      toUpperSec: {
+        at15CU: fmt(reqGPA(upperMin, 15)),
+        at18CU: fmt(reqGPA(upperMin, 18)),
+        at20CU: fmt(reqGPA(upperMin, 20)),
+      },
+      toLowerSec: {
+        at18CU: fmt(reqGPA(lowerMin, 18)),
+      },
+      toThirdClass: {
+        at18CU: fmt(reqGPA(thirdMin, 18)),
+      },
+
+      // Max achievable CGPAs
+      maxCGPAin2Sems: maxCGPA(2, 18) ?? "N/A",
+      maxCGPAin4Sems: maxCGPA(4, 18) ?? "N/A",
+      maxCGPAin6Sems: maxCGPA(6, 18) ?? "N/A",
     };
-  }, [institution, semesters, cgpa, degreeClass, totals]);
+  }, [institution, semesters, cgpa, degreeClass]);
 
 
   // ── Build rich context object for the knowledge base ─────────────────────────
