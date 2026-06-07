@@ -1,7 +1,8 @@
 // ── App.jsx ───────────────────────────────────────────────────────────────────
-// Root component. Orchestrates all hooks and renders the component tree.
-// No business logic lives here — this file is pure composition.
-
+// Added:
+//   - What-if Course Editor state and handlers
+//   - Carryover Priority Ranker in right panel
+//   - WhatsApp share handler
 
 import React, { useMemo, useState } from "react";
 
@@ -14,13 +15,15 @@ import {
   buildTextSummary,
   downloadTextSummary,
   copyTextToClipboard,
+  buildWhatsAppSummary,
+  shareToWhatsApp,
 } from "./utils/exportText.js";
 import {
   exportAndDownloadJSON,
   importFromJSON,
 } from "./utils/exportJSON.js";
+import { computeWhatIfCGPA } from "./utils/calculator.js";
 
-// Components — built in batches 12–27
 import Header             from "./components/Header/Header.jsx";
 import Footer             from "./components/Footer/Footer.jsx";
 import StudentProfileBar  from "./components/StudentProfileBar/StudentProfileBar.jsx";
@@ -30,6 +33,7 @@ import SuggestionEngine   from "./components/SuggestionEngine/SuggestionEngine.j
 import CGPASummary        from "./components/CGPASummary/CGPASummary.jsx";
 import ProjectionPanel    from "./components/ProjectionPanel/ProjectionPanel.jsx";
 import ImprovementChat    from "./components/ImprovementChat/ImprovementChat.jsx";
+import CarryoverRanker    from "./components/CarryoverRanker/CarryoverRanker.jsx";
 import InstitutionModal   from "./components/Modals/InstitutionModal.jsx";
 import ImportModal        from "./components/Modals/ImportModal.jsx";
 import ClearConfirmDialog from "./components/Modals/ClearConfirmDialog.jsx";
@@ -38,33 +42,41 @@ import HelpCenter         from "./components/HelpCenter/HelpCenter.jsx";
 import "./App.css";
 
 
-// ── App ───────────────────────────────────────────────────────────────────────
-
 export default function App() {
 
   // ── Hooks ───────────────────────────────────────────────────────────────────
   const cgpa = useCGPA();
-
   const persistence = usePersistence(cgpa);
 
   const [infoModalOpen, setInfoModalOpen] = useState(false);
 
+  // ── What-if state ────────────────────────────────────────────────────────────
+  // whatIfGrades: { courseId: gradeLetter }
+  const [whatIfMode,   setWhatIfMode]   = useState(false);
+  const [whatIfGrades, setWhatIfGrades] = useState({});
+
+  // Hypothetical CGPA — recomputed whenever what-if grades change
+  const whatIfCGPA = useMemo(() => {
+    if (!whatIfMode || Object.keys(whatIfGrades).length === 0) return null;
+    return computeWhatIfCGPA(cgpa.semesters, cgpa.activeGradeTable, whatIfGrades);
+  }, [whatIfMode, whatIfGrades, cgpa.semesters, cgpa.activeGradeTable]);
+
   const chat = useChat({
-  institution:           cgpa.institution,
-  student:               cgpa.student,
-  semesters:             cgpa.semesters,
-  cgpa:                  cgpa.cgpa,
-  degreeClass:           cgpa.degreeClass,
-  degreeClassShort:      cgpa.degreeClassShort,
-  degreeClassEntry:      cgpa.degreeClassEntry,
-  semesterSummaries:     cgpa.semesterSummaries,
-  totals:                cgpa.totals,
-  activeScale:           cgpa.activeScale,
-  activeClassifications: cgpa.activeClassifications,
-  activePassmark:        cgpa.activePassmark,
-  projection:            cgpa.projection,
-  projectionResult:      cgpa.projectionResult,
-});
+    institution:           cgpa.institution,
+    student:               cgpa.student,
+    semesters:             cgpa.semesters,
+    cgpa:                  cgpa.cgpa,
+    degreeClass:           cgpa.degreeClass,
+    degreeClassShort:      cgpa.degreeClassShort,
+    degreeClassEntry:      cgpa.degreeClassEntry,
+    semesterSummaries:     cgpa.semesterSummaries,
+    totals:                cgpa.totals,
+    activeScale:           cgpa.activeScale,
+    activeClassifications: cgpa.activeClassifications,
+    activePassmark:        cgpa.activePassmark,
+    projection:            cgpa.projection,
+    projectionResult:      cgpa.projectionResult,
+  });
 
 
   // ── Derived convenience values ──────────────────────────────────────────────
@@ -83,6 +95,29 @@ export default function App() {
     () => cgpa.institution !== null || cgpa.semesters.length > 0,
     [cgpa.institution, cgpa.semesters]
   );
+
+
+  // ── What-if handlers ────────────────────────────────────────────────────────
+
+  function handleToggleWhatIf() {
+    if (whatIfMode) {
+      // Exiting: clear all what-if grades
+      setWhatIfGrades({});
+    }
+    setWhatIfMode((prev) => !prev);
+  }
+
+  function handleWhatIfGradeChange(courseId, gradeLetter) {
+    setWhatIfGrades((prev) => {
+      if (!gradeLetter) {
+        // Remove override for this course
+        const next = { ...prev };
+        delete next[courseId];
+        return next;
+      }
+      return { ...prev, [courseId]: gradeLetter };
+    });
+  }
 
 
   // ── Export handlers ─────────────────────────────────────────────────────────
@@ -145,6 +180,21 @@ export default function App() {
     downloadTextSummary(text, cgpa.institution?.id, cgpa.student?.name);
   }
 
+  function handleShareWhatsApp() {
+    const text = buildWhatsAppSummary({
+      institution:       cgpa.institution,
+      student:           cgpa.student,
+      semesters:         cgpa.semesters,
+      cgpa:              cgpa.cgpa,
+      degreeClass:       cgpa.degreeClass,
+      semesterSummaries: cgpa.semesterSummaries,
+      totalCU:           cgpa.totals.totalCU,
+      totalQP:           cgpa.totals.totalQP,
+      useUILegacyScale:  cgpa.useUILegacyScale,
+    });
+    shareToWhatsApp(text);
+  }
+
 
   // ── Import JSON handler ─────────────────────────────────────────────────────
 
@@ -186,6 +236,7 @@ export default function App() {
         onExportJSON={handleExportJSON}
         onExportText={handleExportText}
         onDownloadText={handleDownloadText}
+        onShareWhatsApp={handleShareWhatsApp}
         onImportJSON={handleImportJSON}
         onClearData={() => cgpa.openModal("clearConfirmOpen")}
         hasData={hasAnyData}
@@ -225,6 +276,10 @@ export default function App() {
               onClearSemester={cgpa.clearSemester}
               onToggleCollapse={cgpa.toggleSemesterCollapse}
               onOpenImport={() => cgpa.openModal("importModalOpen")}
+              whatIfMode={whatIfMode}
+              whatIfGrades={whatIfGrades}
+              onWhatIfToggle={handleToggleWhatIf}
+              onWhatIfGradeChange={handleWhatIfGradeChange}
             />
           ) : (
             <EmptyStart
@@ -256,6 +311,9 @@ export default function App() {
             scaleMax={cgpa.activeScale}
             institution={cgpa.institution}
             semesterSummaries={cgpa.semesterSummaries}
+            whatIfCGPA={whatIfCGPA}
+            whatIfMode={whatIfMode}
+            activeClassifications={cgpa.activeClassifications}
           />
 
           <ProjectionPanel
@@ -266,6 +324,15 @@ export default function App() {
             activeGradeTable={cgpa.activeGradeTable}
             activeClassifications={cgpa.activeClassifications}
             onSetProjection={cgpa.setProjection}
+          />
+
+          <CarryoverRanker
+            semesters={cgpa.semesters}
+            totals={cgpa.totals}
+            cgpa={cgpa.cgpa}
+            activeGradeTable={cgpa.activeGradeTable}
+            activeClassifications={cgpa.activeClassifications}
+            activeScale={cgpa.activeScale}
           />
 
           <ImprovementChat
@@ -298,7 +365,6 @@ export default function App() {
       />
 
 
-      {/* ── Footer ─────────────────────────────────────────────────────────── */}
       <Footer />
 
 
@@ -353,9 +419,7 @@ export default function App() {
       )}
 
       {cgpa.ui.helpCenterOpen && (
-        <HelpCenter
-          onClose={() => cgpa.closeModal("helpCenterOpen")}
-        />
+        <HelpCenter onClose={() => cgpa.closeModal("helpCenterOpen")} />
       )}
 
     </div>
@@ -373,42 +437,13 @@ function AppLoadingScreen() {
         <div className="app-loading__spinner" aria-label="Loading" />
         <p className="app-loading__text">Loading your data...</p>
       </div>
-
       <style>{`
-        .app-loading {
-          min-height: 100dvh;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background-color: var(--color-surface);
-        }
-        .app-loading__inner {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: var(--space-4);
-        }
-        .app-loading__logo {
-          font-size: 28px;
-          font-weight: var(--font-weight-bold);
-          color: var(--color-primary);
-          letter-spacing: -0.02em;
-        }
-        .app-loading__spinner {
-          width: 32px;
-          height: 32px;
-          border: 3px solid var(--color-border);
-          border-top-color: var(--color-primary);
-          border-radius: 50%;
-          animation: spin 0.7s linear infinite;
-        }
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-        .app-loading__text {
-          font-size: var(--font-size-sm);
-          color: var(--color-text-muted);
-        }
+        .app-loading { min-height: 100dvh; display: flex; align-items: center; justify-content: center; background-color: var(--color-surface); }
+        .app-loading__inner { display: flex; flex-direction: column; align-items: center; gap: var(--space-4); }
+        .app-loading__logo { font-size: 28px; font-weight: var(--font-weight-bold); color: var(--color-primary); letter-spacing: -0.02em; }
+        .app-loading__spinner { width: 32px; height: 32px; border: 3px solid var(--color-border); border-top-color: var(--color-primary); border-radius: 50%; animation: spin 0.7s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .app-loading__text { font-size: var(--font-size-sm); color: var(--color-text-muted); }
       `}</style>
     </div>
   );
@@ -419,21 +454,13 @@ function EmptyStart({ onSelectInstitution, onAddSemester, hasInstitution }) {
   return (
     <div className="empty-start panel-card">
       <div className="empty-start__inner">
-
         <div className="empty-start__icon" aria-hidden="true">
           <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
             <rect width="48" height="48" rx="12" fill="var(--color-surface-2)" />
-            <path
-              d="M14 30 L24 20 L34 30"
-              stroke="var(--color-primary)"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <rect x="18" y="30" width="12" height="9" rx="2"
-              fill="var(--color-primary)" opacity="0.7" />
-            <rect x="22" y="17" width="4" height="4" rx="2"
-              fill="var(--color-accent)" />
+            <path d="M14 30 L24 20 L34 30" stroke="var(--color-primary)" strokeWidth="2.5"
+              strokeLinecap="round" strokeLinejoin="round" />
+            <rect x="18" y="30" width="12" height="9" rx="2" fill="var(--color-primary)" opacity="0.7" />
+            <rect x="22" y="17" width="4" height="4" rx="2" fill="var(--color-accent)" />
           </svg>
         </div>
 
@@ -445,10 +472,7 @@ function EmptyStart({ onSelectInstitution, onAddSemester, hasInstitution }) {
               Select your university to begin. The app will use your institution's
               official grading scale and classification thresholds.
             </p>
-            <button
-              className="btn btn-primary"
-              onClick={onSelectInstitution}
-            >
+            <button className="btn btn-primary" onClick={onSelectInstitution}>
               Select University
             </button>
           </>
@@ -457,10 +481,7 @@ function EmptyStart({ onSelectInstitution, onAddSemester, hasInstitution }) {
             <p className="empty-start__text">
               Your university is set. Add your first semester to start entering courses.
             </p>
-            <button
-              className="btn btn-primary"
-              onClick={onAddSemester}
-            >
+            <button className="btn btn-primary" onClick={onAddSemester}>
               Add First Semester
             </button>
           </>
@@ -468,31 +489,10 @@ function EmptyStart({ onSelectInstitution, onAddSemester, hasInstitution }) {
       </div>
 
       <style>{`
-        .empty-start {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          min-height: 280px;
-          padding: var(--space-8) var(--space-6);
-        }
-        .empty-start__inner {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: var(--space-4);
-          max-width: 320px;
-          text-align: center;
-        }
-        .empty-start__heading {
-          font-size: var(--font-size-xl);
-          font-weight: var(--font-weight-bold);
-          color: var(--color-text-primary);
-        }
-        .empty-start__text {
-          font-size: var(--font-size-base);
-          color: var(--color-text-secondary);
-          line-height: var(--line-height-relaxed);
-        }
+        .empty-start { display: flex; align-items: center; justify-content: center; min-height: 280px; padding: var(--space-8) var(--space-6); }
+        .empty-start__inner { display: flex; flex-direction: column; align-items: center; gap: var(--space-4); max-width: 320px; text-align: center; }
+        .empty-start__heading { font-size: var(--font-size-xl); font-weight: var(--font-weight-bold); color: var(--color-text-primary); }
+        .empty-start__text { font-size: var(--font-size-base); color: var(--color-text-secondary); line-height: var(--line-height-relaxed); }
       `}</style>
     </div>
   );
@@ -510,10 +510,7 @@ function MobileCGPABar({ cgpa, degreeClassShort, degreeClassEntry, scaleMax, sem
     <div className="cgpa-sticky-bar" role="status" aria-label="Current CGPA">
       <div className="cgpa-sticky-bar__left">
         <span className="cgpa-sticky-bar__label">CGPA</span>
-        <span
-          className="cgpa-sticky-bar__value"
-          style={{ color: classColor }}
-        >
+        <span className="cgpa-sticky-bar__value" style={{ color: classColor }}>
           {cgpa.toFixed(2)}
         </span>
         <span className="cgpa-sticky-bar__scale">/ {scaleMax.toFixed(1)}</span>
@@ -521,10 +518,7 @@ function MobileCGPABar({ cgpa, degreeClassShort, degreeClassEntry, scaleMax, sem
 
       <div className="cgpa-sticky-bar__right">
         {degreeClassShort && (
-          <span
-            className="cgpa-sticky-bar__class"
-            style={{ color: classColor }}
-          >
+          <span className="cgpa-sticky-bar__class" style={{ color: classColor }}>
             {degreeClassShort}
           </span>
         )}
@@ -534,47 +528,18 @@ function MobileCGPABar({ cgpa, degreeClassShort, degreeClassEntry, scaleMax, sem
       </div>
 
       <style>{`
-        .cgpa-sticky-bar__left {
-          display: flex;
-          align-items: baseline;
-          gap: var(--space-2);
-        }
-        .cgpa-sticky-bar__label {
-          font-size: var(--font-size-xs);
-          font-weight: var(--font-weight-medium);
-          text-transform: uppercase;
-          letter-spacing: var(--letter-spacing-label);
-          color: rgba(255,255,255,0.65);
-        }
-        .cgpa-sticky-bar__value {
-          font-size: 22px;
-          font-weight: var(--font-weight-bold);
-          letter-spacing: var(--letter-spacing-cgpa);
-        }
-        .cgpa-sticky-bar__scale {
-          font-size: var(--font-size-sm);
-          color: rgba(255,255,255,0.55);
-        }
-        .cgpa-sticky-bar__right {
-          display: flex;
-          align-items: center;
-          gap: var(--space-3);
-        }
-        .cgpa-sticky-bar__class {
-          font-size: var(--font-size-base);
-          font-weight: var(--font-weight-bold);
-        }
-        .cgpa-sticky-bar__sems {
-          font-size: var(--font-size-sm);
-          color: rgba(255,255,255,0.55);
-        }
+        .cgpa-sticky-bar__left { display: flex; align-items: baseline; gap: var(--space-2); }
+        .cgpa-sticky-bar__label { font-size: var(--font-size-xs); font-weight: var(--font-weight-medium); text-transform: uppercase; letter-spacing: var(--letter-spacing-label); color: rgba(255,255,255,0.65); }
+        .cgpa-sticky-bar__value { font-size: 22px; font-weight: var(--font-weight-bold); letter-spacing: var(--letter-spacing-cgpa); }
+        .cgpa-sticky-bar__scale { font-size: var(--font-size-sm); color: rgba(255,255,255,0.55); }
+        .cgpa-sticky-bar__right { display: flex; align-items: center; gap: var(--space-3); }
+        .cgpa-sticky-bar__class { font-size: var(--font-size-base); font-weight: var(--font-weight-bold); }
+        .cgpa-sticky-bar__sems { font-size: var(--font-size-sm); color: rgba(255,255,255,0.55); }
       `}</style>
     </div>
   );
 }
 
-
-// ── Color helper for class badges ─────────────────────────────────────────────
 
 function getClassColorVar(short) {
   if (!short) return "var(--color-accent)";

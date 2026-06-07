@@ -398,6 +398,67 @@ export function computeCarryoverImpact(
 }
 
 
+// ── What-if CGPA ──────────────────────────────────────────────────────────────
+
+/**
+ * Computes a hypothetical CGPA by substituting what-if grade letters
+ * for specific courses. Used by the What-if Course Editor.
+ * whatIfGrades shape: { courseId: gradeLetter }
+ *
+ * @param {Array}  semesters    - All semester data
+ * @param {Array}  gradeTable   - Active institution grade table
+ * @param {Object} whatIfGrades - Map of { courseId: gradeLetter } overrides
+ * @returns {number|null}
+ */
+export function computeWhatIfCGPA(semesters, gradeTable, whatIfGrades) {
+  if (!Array.isArray(semesters) || !whatIfGrades) return null;
+  if (Object.keys(whatIfGrades).length === 0) return null;
+
+  let totalCU = 0;
+  let totalQP = 0;
+
+  for (const semester of semesters) {
+    if (!Array.isArray(semester.courses)) continue;
+    for (const course of semester.courses) {
+      const cu = parseFloat(course.creditUnits);
+      if (isNaN(cu) || cu <= 0) continue;
+
+      let gp;
+
+      if (course.id in whatIfGrades) {
+        const letter = whatIfGrades[course.id];
+        if (!letter) continue;
+        gp = gradeLetterToPoint(letter, gradeTable);
+        if (gp === null) continue;
+      } else if (
+        course.gradePoint !== null &&
+        course.gradePoint !== undefined &&
+        !isNaN(course.gradePoint)
+      ) {
+        gp = course.gradePoint;
+      } else if (
+        course.score !== null &&
+        course.score !== undefined &&
+        !isNaN(course.score)
+      ) {
+        const entry = scoreToGrade(course.score, gradeTable);
+        gp = entry ? entry.point : null;
+      } else if (course.grade) {
+        gp = gradeLetterToPoint(course.grade, gradeTable);
+      } else {
+        continue;
+      }
+
+      if (gp === null || gp === undefined) continue;
+      totalQP += cu * gp;
+      totalCU += cu;
+    }
+  }
+
+  if (totalCU === 0) return null;
+  return round4(totalQP / totalCU);
+}
+
 // ── Validation Helpers ────────────────────────────────────────────────────────
 
 /**

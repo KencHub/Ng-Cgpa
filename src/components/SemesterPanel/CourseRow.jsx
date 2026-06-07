@@ -1,16 +1,9 @@
 // ── CourseRow.jsx ─────────────────────────────────────────────────────────────
 // A single editable course entry in the semester course table.
 //
-// NC badge lives inline to the right of the course name input — never inside
-// the CU cell. InfoPopover renders via ReactDOM.createPortal into document.body
-// so it is never clipped by any parent overflow:hidden.
-//
-// Styles live in SemesterPanel.css.
-//
-// CHANGED: credit unit maximum raised from 6 to 8.
-// Some technology and professional courses at Nigerian universities carry
-// 7 or 8 credit units. Validation, error messages, and the input max
-// attribute all reflect this.
+// Added: What-if grade selector — shown when whatIfMode is active.
+// When active, the real grade is shown as a read-only label and
+// an orange-bordered selector appears below it for the hypothetical grade.
 
 import React, { useState, useEffect, useRef, useId } from "react";
 import ReactDOM from "react-dom";
@@ -28,40 +21,31 @@ function InfoPopover({ anchorRef, open, onClose, children, width = 240 }) {
       setCoords(null);
       return;
     }
-
     const rect = anchorRef.current.getBoundingClientRect();
     const vpW  = window.innerWidth;
     const EDGE = 8;
-
     let left = rect.left + rect.width / 2 - width / 2;
     left = Math.max(EDGE, Math.min(left, vpW - width - EDGE));
-
     const arrowLeft = Math.max(12, Math.min(
       (rect.left + rect.width / 2) - left,
       width - 12
     ));
-
     setCoords({ top: rect.top, left, arrowLeft });
   }, [open, anchorRef, width]);
 
   useEffect(() => {
     if (!open) return;
-
     function handlePointerDown(e) {
       if (
         popRef.current    && !popRef.current.contains(e.target) &&
         anchorRef.current && !anchorRef.current.contains(e.target)
-      ) {
-        onClose();
-      }
+      ) { onClose(); }
     }
     function handleKey(e)   { if (e.key === "Escape") onClose(); }
     function handleScroll() { onClose(); }
-
     document.addEventListener("pointerdown", handlePointerDown);
     document.addEventListener("keydown",     handleKey);
     window.addEventListener("scroll", handleScroll, { passive: true, capture: true });
-
     return () => {
       document.removeEventListener("pointerdown", handlePointerDown);
       document.removeEventListener("keydown",     handleKey);
@@ -86,10 +70,7 @@ function InfoPopover({ anchorRef, open, onClose, children, width = 240 }) {
       }}
     >
       <div className="info-popover__body">{children}</div>
-      <div
-        className="info-popover__arrow"
-        style={{ left: coords.arrowLeft }}
-      />
+      <div className="info-popover__arrow" style={{ left: coords.arrowLeft }} />
     </div>,
     document.body
   );
@@ -106,13 +87,14 @@ const CourseRow = React.forwardRef(function CourseRow(
     onUpdate,
     onRemove,
     rowIndex,
+    // What-if props
+    whatIfMode,
+    whatIfGradeLetter,
+    onWhatIfChange,
   },
   ref
 ) {
-
-  // ── Local input state ───────────────────────────────────────────────────────
-
-  const [localName,  setLocalName]  = useState(course.name  ?? "");
+  const [localName,  setLocalName]  = useState(course.name ?? "");
   const [localScore, setLocalScore] = useState(
     course.score !== null && course.score !== undefined
       ? String(course.score)
@@ -136,13 +118,9 @@ const CourseRow = React.forwardRef(function CourseRow(
     }
   }, [course.score]);
 
-  // ── Validation errors ───────────────────────────────────────────────────────
-
   const [nameError,  setNameError]  = useState("");
   const [cuError,    setCUError]    = useState("");
   const [scoreError, setScoreError] = useState("");
-
-  // ── Popover state ───────────────────────────────────────────────────────────
 
   const [ncOpen, setNcOpen] = useState(false);
   const [fOpen,  setFOpen]  = useState(false);
@@ -152,7 +130,7 @@ const CourseRow = React.forwardRef(function CourseRow(
   const uid = useId();
 
 
-  // ── Name ────────────────────────────────────────────────────────────────────
+  // ── Name ──────────────────────────────────────────────────────────────────
 
   function handleNameChange(e) {
     const val = e.target.value.slice(0, 50);
@@ -168,42 +146,24 @@ const CourseRow = React.forwardRef(function CourseRow(
       return;
     }
     setNameError("");
-    if (trimmed !== course.name) {
-      onUpdate(course.id, { name: trimmed });
-    }
+    if (trimmed !== course.name) onUpdate(course.id, { name: trimmed });
   }
 
-  function handleNameFocus() {
-    nameFocused.current = true;
-  }
+  function handleNameFocus() { nameFocused.current = true; }
 
 
-  // ── Credit units ───────────────────────────────────────────────────────────
-  // Maximum is 8. Some technology and professional programmes carry 7–8 units.
+  // ── Credit units ──────────────────────────────────────────────────────────
 
   function handleCUChange(e) {
     const raw = e.target.value;
-    if (raw === "") {
-      onUpdate(course.id, { creditUnits: "" });
-      setCUError("");
-      return;
-    }
+    if (raw === "") { onUpdate(course.id, { creditUnits: "" }); setCUError(""); return; }
     const n = parseInt(raw, 10);
-    if (!isNaN(n)) {
-      onUpdate(course.id, { creditUnits: n });
-      if (n >= 0 && n <= 8) setCUError("");
-    }
+    if (!isNaN(n)) { onUpdate(course.id, { creditUnits: n }); if (n >= 0 && n <= 8) setCUError(""); }
   }
 
   function handleCUBlur() {
     const n = parseInt(course.creditUnits, 10);
-    if (
-      course.creditUnits === "" ||
-      isNaN(n) ||
-      n < 0 ||
-      n > 8 ||
-      !Number.isInteger(n)
-    ) {
+    if (course.creditUnits === "" || isNaN(n) || n < 0 || n > 8 || !Number.isInteger(n)) {
       setCUError("0 to 8");
     } else {
       setCUError("");
@@ -213,60 +173,42 @@ const CourseRow = React.forwardRef(function CourseRow(
 
   // ── Score ─────────────────────────────────────────────────────────────────
 
-  function handleScoreChange(e) {
-    scoreFocused.current = true;
-    setLocalScore(e.target.value);
-    if (scoreError) setScoreError("");
-  }
-
-  function handleScoreFocus() {
-    scoreFocused.current = true;
-  }
+  function handleScoreChange(e) { scoreFocused.current = true; setLocalScore(e.target.value); if (scoreError) setScoreError(""); }
+  function handleScoreFocus()   { scoreFocused.current = true; }
 
   function handleScoreBlur() {
     scoreFocused.current = false;
     const raw = localScore.trim();
-
-    if (raw === "") {
-      onUpdate(course.id, { score: null, grade: null });
-      setScoreError("");
-      return;
-    }
-
+    if (raw === "") { onUpdate(course.id, { score: null, grade: null }); setScoreError(""); return; }
     const num = Math.round(parseFloat(raw));
-
     if (isNaN(num) || num < 0 || num > 100) {
       setScoreError("0 – 100");
-      setLocalScore(
-        course.score !== null && course.score !== undefined
-          ? String(course.score)
-          : ""
-      );
+      setLocalScore(course.score !== null ? String(course.score) : "");
       return;
     }
-
     setScoreError("");
     setLocalScore(String(num));
-    if (num !== course.score) {
-      onUpdate(course.id, { score: num });
-    }
+    if (num !== course.score) onUpdate(course.id, { score: num });
   }
 
-  function handleScoreKeyDown(e) {
-    if (e.key === "Enter") e.target.blur();
-  }
+  function handleScoreKeyDown(e) { if (e.key === "Enter") e.target.blur(); }
 
 
-  // ── Grade ─────────────────────────────────────────────────────────────────
+  // ── Real grade ────────────────────────────────────────────────────────────
 
   function handleGradeChange(e) {
     const grade = e.target.value;
-    if (!grade) {
-      onUpdate(course.id, { grade: null, score: null });
-      return;
-    }
+    if (!grade) { onUpdate(course.id, { grade: null, score: null }); return; }
     const minScore = gradeToMinScore(grade, activeGradeTable);
     onUpdate(course.id, { grade, score: minScore });
+  }
+
+
+  // ── What-if grade ─────────────────────────────────────────────────────────
+
+  function handleWhatIfGradeChange(e) {
+    const letter = e.target.value || null;
+    onWhatIfChange?.(letter);
   }
 
 
@@ -284,41 +226,42 @@ const CourseRow = React.forwardRef(function CourseRow(
 
   const isFailed = course.status === "failed";
 
-  const gpDisplay =
-    course.gradePoint !== null && course.gradePoint !== undefined
-      ? String(course.gradePoint)
-      : "—";
+  // What-if grade resolution — overrides real GP and QP when active
+  const whatIfEntry = (whatIfMode && whatIfGradeLetter)
+    ? activeGradeTable.find((g) => g.letter === whatIfGradeLetter)
+    : null;
+
+  const whatIfGP = whatIfEntry ? whatIfEntry.point : null;
+  const cu = parseFloat(course.creditUnits);
+
+  const gpDisplay = whatIfEntry
+    ? String(whatIfGP)
+    : course.gradePoint !== null ? String(course.gradePoint) : "—";
 
   const qpDisplay = isNonContributing
     ? "0"
-    : course.qualityPoint !== null && course.qualityPoint !== undefined
-      ? (Math.round(course.qualityPoint * 100) / 100).toFixed(2)
-      : "—";
+    : whatIfEntry
+      ? (Math.round(cu * whatIfGP * 100) / 100).toFixed(2)
+      : course.qualityPoint !== null
+        ? (Math.round(course.qualityPoint * 100) / 100).toFixed(2)
+        : "—";
 
   const scoreDisplay = localScore;
   const gradeValue   = course.grade || "";
+  const schoolName   = institution?.shortName || null;
 
   const rowClass = [
     "course-row",
     isCarryover                   ? "course-row--carryover"       : "",
     isNonContributing             ? "course-row--noncontrib"      : "",
     isNonContributing && isFailed ? "course-row--noncontrib-fail" : "",
-  ]
-    .filter(Boolean)
-    .join(" ");
-
-  const schoolName = institution?.shortName || null;
+  ].filter(Boolean).join(" ");
 
 
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div
-      ref={ref}
-      className={rowClass}
-      role="row"
-      aria-rowindex={rowIndex + 2}
-    >
+    <div ref={ref} className={rowClass} role="row" aria-rowindex={rowIndex + 2}>
 
       {/* ── Course name + NC badge ────────────────────────────────────────── */}
       <div className="course-row__cell course-row__cell--name" role="cell">
@@ -350,32 +293,19 @@ const CourseRow = React.forwardRef(function CourseRow(
                 aria-expanded={ncOpen}
                 aria-label="Non-contributing course. Tap for details."
               >
-                NC
-                <IconInfo />
+                NC<IconInfo />
               </button>
-
-              <InfoPopover
-                anchorRef={ncAnchorRef}
-                open={ncOpen}
-                onClose={() => setNcOpen(false)}
-                width={240}
-              >
-                0 credit units. This course is recorded and graded but does
-                not affect your GPA or CGPA.
-                {schoolName
-                  ? ` Common for general studies courses at ${schoolName}.`
-                  : " Common for general studies courses."}
+              <InfoPopover anchorRef={ncAnchorRef} open={ncOpen} onClose={() => setNcOpen(false)} width={240}>
+                0 credit units. This course is recorded and graded but does not
+                affect your GPA or CGPA.
+                {schoolName ? ` Common for general studies courses at ${schoolName}.` : " Common for general studies courses."}
               </InfoPopover>
             </>
           )}
         </div>
 
         {nameError && (
-          <span
-            id={`${uid}-name-err`}
-            className="course-row__field-error"
-            role="alert"
-          >
+          <span id={`${uid}-name-err`} className="course-row__field-error" role="alert">
             {nameError}
           </span>
         )}
@@ -391,29 +321,18 @@ const CourseRow = React.forwardRef(function CourseRow(
               "course-input course-input--center",
               cuError && !isNonContributing ? "course-input--error" : "",
               isNonContributing             ? "course-input--warn"  : "",
-            ]
-              .filter(Boolean)
-              .join(" ")}
+            ].filter(Boolean).join(" ")}
             value={course.creditUnits ?? ""}
             onChange={handleCUChange}
             onBlur={handleCUBlur}
-            min={0}
-            max={8}
-            step={1}
+            min={0} max={8} step={1}
             placeholder="—"
             aria-label={`Credit units, row ${rowIndex + 1}`}
-            aria-invalid={
-              cuError && !isNonContributing ? "true" : "false"
-            }
+            aria-invalid={cuError && !isNonContributing ? "true" : "false"}
           />
         </div>
-
         {cuError && !isNonContributing && (
-          <span
-            id={`${uid}-cu-err`}
-            className="course-row__field-error"
-            role="alert"
-          >
+          <span id={`${uid}-cu-err`} className="course-row__field-error" role="alert">
             {cuError}
           </span>
         )}
@@ -425,9 +344,7 @@ const CourseRow = React.forwardRef(function CourseRow(
         <input
           type="text"
           inputMode="numeric"
-          className={`course-input course-input--center${
-            scoreError ? " course-input--error" : ""
-          }`}
+          className={`course-input course-input--center${scoreError ? " course-input--error" : ""}`}
           value={scoreDisplay}
           onChange={handleScoreChange}
           onFocus={handleScoreFocus}
@@ -440,11 +357,7 @@ const CourseRow = React.forwardRef(function CourseRow(
           aria-describedby={scoreError ? `${uid}-score-err` : undefined}
         />
         {scoreError && (
-          <span
-            id={`${uid}-score-err`}
-            className="course-row__field-error"
-            role="alert"
-          >
+          <span id={`${uid}-score-err`} className="course-row__field-error" role="alert">
             {scoreError}
           </span>
         )}
@@ -453,19 +366,41 @@ const CourseRow = React.forwardRef(function CourseRow(
 
       {/* ── Grade selector ───────────────────────────────────────────────── */}
       <div className="course-row__cell course-row__cell--grade" role="cell">
-        <select
-          className="course-input course-input--center course-input--select"
-          value={gradeValue}
-          onChange={handleGradeChange}
-          aria-label={`Grade, row ${rowIndex + 1}`}
-        >
-          <option value="">—</option>
-          {activeGradeTable.map((g) => (
-            <option key={g.letter} value={g.letter}>
-              {g.letter}
-            </option>
-          ))}
-        </select>
+        {!whatIfMode ? (
+          <select
+            className="course-input course-input--center course-input--select"
+            value={gradeValue}
+            onChange={handleGradeChange}
+            aria-label={`Grade, row ${rowIndex + 1}`}
+          >
+            <option value="">—</option>
+            {activeGradeTable.map((g) => (
+              <option key={g.letter} value={g.letter}>{g.letter}</option>
+            ))}
+          </select>
+        ) : (
+          <>
+            <div
+              className="course-row__real-grade-label"
+              title="Real grade — unchanged"
+              aria-label={`Real grade: ${gradeValue || "none"}`}
+            >
+              {gradeValue || "—"}
+            </div>
+            <select
+              className="course-input course-input--center course-input--select course-input--whatif"
+              value={whatIfGradeLetter ?? ""}
+              onChange={handleWhatIfGradeChange}
+              aria-label={`What-if grade, row ${rowIndex + 1}`}
+              title="Pick a hypothetical grade. Your real grade is unchanged."
+            >
+              <option value="">↗</option>
+              {activeGradeTable.map((g) => (
+                <option key={g.letter} value={g.letter}>{g.letter}</option>
+              ))}
+            </select>
+          </>
+        )}
       </div>
 
 
@@ -475,9 +410,7 @@ const CourseRow = React.forwardRef(function CourseRow(
           "course-row__cell course-row__cell--gp course-row__derived",
           isCarryover       ? "course-row__derived--fail"  : "",
           isNonContributing ? "course-row__derived--muted" : "",
-        ]
-          .filter(Boolean)
-          .join(" ")}
+        ].filter(Boolean).join(" ")}
         role="cell"
         aria-label={`Grade point: ${gpDisplay}`}
       >
@@ -491,9 +424,7 @@ const CourseRow = React.forwardRef(function CourseRow(
           "course-row__cell course-row__cell--qp course-row__derived",
           isCarryover       ? "course-row__derived--fail"  : "",
           isNonContributing ? "course-row__derived--muted" : "",
-        ]
-          .filter(Boolean)
-          .join(" ")}
+        ].filter(Boolean).join(" ")}
         role="cell"
         aria-label={`Quality points: ${qpDisplay}`}
       >
@@ -514,22 +445,13 @@ const CourseRow = React.forwardRef(function CourseRow(
           >
             <span className="carryover-badge__label">F</span>
           </button>
-
-          <InfoPopover
-            anchorRef={fAnchorRef}
-            open={fOpen}
-            onClose={() => setFOpen(false)}
-            width={240}
-          >
-            This F grade contributes 0 quality points but still counts toward
-            your total credit units, pulling your CGPA down.
+          <InfoPopover anchorRef={fAnchorRef} open={fOpen} onClose={() => setFOpen(false)} width={240}>
+            This F grade contributes 0 quality points but still counts toward your
+            total credit units, pulling your CGPA down.
             {course.creditUnits && parseInt(course.creditUnits) >= 1 && (
-              <>
-                {" "}Retaking this {course.creditUnits}-unit course and earning
-                a C adds{" "}
-                {(parseInt(course.creditUnits) * 3).toFixed(0)} quality points
-                without changing your credit unit count.
-              </>
+              <> Retaking this {course.creditUnits}-unit course and earning a C adds{" "}
+              {(parseInt(course.creditUnits) * 3).toFixed(0)} quality points
+              without changing your credit unit count.</>
             )}
           </InfoPopover>
         </div>
@@ -561,10 +483,8 @@ export default CourseRow;
 function IconTrash() {
   return (
     <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true" focusable="false">
-      <path
-        d="M2 3.5h10M5.5 3.5V2.5a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 .5.5v1M3.5 3.5l.6 7.5a1 1 0 0 0 1 .9h3.8a1 1 0 0 0 1-.9l.6-7.5"
-        stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"
-      />
+      <path d="M2 3.5h10M5.5 3.5V2.5a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 .5.5v1M3.5 3.5l.6 7.5a1 1 0 0 0 1 .9h3.8a1 1 0 0 0 1-.9l.6-7.5"
+        stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M5.5 6.5v3M8.5 6.5v3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
     </svg>
   );

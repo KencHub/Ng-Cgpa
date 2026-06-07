@@ -1,9 +1,9 @@
 /* ── SemesterPanel.css ────────────────────────────────────────────────────────
    Styles for the entire SemesterPanel folder:
-     SemesterPanel.jsx   (Batch 17)
-     CourseTable.jsx     (Batch 16)
-     CourseRow.jsx       (Batch 16)
-     SemesterSummaryBar  (Batch 18)
+     SemesterPanel.jsx
+     CourseTable.jsx
+     CourseRow.jsx
+     SemesterSummaryBar
    ─────────────────────────────────────────────────────────────────────────── */
 
 
@@ -314,7 +314,7 @@
 /* ── Column header ─────────────────────────────────────────────────────────── */
 
 .course-table__header {
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-3) var(--space-3) var(--space-2);
   background-color: var(--color-surface-2);
   border-bottom: 1px solid var(--color-border);
   position: sticky;
@@ -576,19 +576,14 @@
 }
 
 
-/* ── CU input wrapper ─────────────────────────────────────────────────────────
-   No longer needs position:relative. NC badge moved to the name cell.
-   ─────────────────────────────────────────────────────────────────────────── */
+/* ── CU input wrapper ─────────────────────────────────────────────────────────── */
 
 .cu-input-wrap {
   width: 100%;
 }
 
 
-/* ── Name cell wrapper ────────────────────────────────────────────────────────
-   Flex row: name input stretches, NC badge sits inline to its right.
-   NC badge never overlaps any input field.
-   ─────────────────────────────────────────────────────────────────────────── */
+/* ── Name cell wrapper ────────────────────────────────────────────────────────── */
 
 .course-name-wrap {
   display: flex;
@@ -603,10 +598,7 @@
 }
 
 
-/* ── NC badge ─────────────────────────────────────────────────────────────────
-   Inline amber pill to the right of the course name input.
-   Tooltip is a portal (InfoPopover) — never overflows any container.
-   ─────────────────────────────────────────────────────────────────────────── */
+/* ── NC badge ─────────────────────────────────────────────────────────────────── */
 
 .cu-nc-badge {
   display: inline-flex;
@@ -702,9 +694,7 @@
 }
 
 
-/* ── Carryover badge ──────────────────────────────────────────────────────────
-   Portal-anchored tooltip. No overflow CSS needed here.
-   ─────────────────────────────────────────────────────────────────────────── */
+/* ── Carryover badge ──────────────────────────────────────────────────────────── */
 
 .carryover-badge {
   position: relative;
@@ -746,8 +736,6 @@
 
 /* ══════════════════════════════════════════════════════════════════════════════
    PORTAL POPOVER (InfoPopover)
-   Renders via ReactDOM.createPortal into document.body.
-   position: fixed — never clipped by any parent overflow.
    ══════════════════════════════════════════════════════════════════════════════ */
 
 .info-popover {
@@ -788,6 +776,7 @@
    ══════════════════════════════════════════════════════════════════════════════ */
 
 @media (max-width: 539px) {
+  /* Grid columns and compact padding for header and rows */
   .course-table__header,
   .course-row {
     grid-template-columns:
@@ -801,6 +790,14 @@
       30px;
     gap: 0 2px;
     padding: var(--space-1) var(--space-2);
+  }
+
+  /* FIX: adds white space between the column header's bottom border and the
+     first course row. The header gray background ends at its border. This
+     padding on the body reveals the white course-table background beneath,
+     giving PIO 214 the same visual breathing room as rows between each other. */
+  .course-table__body {
+    padding-top: var(--space-2);
   }
 
   .course-input {
@@ -836,6 +833,37 @@
     justify-content: center;
   }
 
+  /* Idle what-if button collapses to icon-only on mobile */
+  .course-table__whatif-toggle span {
+    display: none;
+  }
+
+  /* FIX: larger tap target and bigger icon */
+  .course-table__whatif-toggle {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .course-table__whatif-toggle svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  /* Active unit: hide exit label text, keep icon + ⓘ + GPA */
+  .course-table__whatif-exit span {
+    display: none;
+  }
+
+  .course-table__whatif-exit {
+    padding: 0 var(--space-2);
+  }
+
+  .course-table__whatif-result {
+    padding: 0 var(--space-2) 0 var(--space-1);
+  }
+
   .semester-header__main {
     padding: var(--space-2) var(--space-3);
     min-height: 46px;
@@ -845,7 +873,6 @@
     font-size: var(--font-size-base);
   }
 
-  /* NC badge shrinks with the name column on mobile */
   .cu-nc-badge {
     font-size: 6px;
     height: 18px;
@@ -882,7 +909,6 @@
 
 /* ══════════════════════════════════════════════════════════════════════════════
    SEMESTER SUMMARY BAR
-   (Component built in Batch 18 — styled here for co-location)
    ══════════════════════════════════════════════════════════════════════════════ */
 
 .semester-summary-bar {
@@ -953,4 +979,169 @@
   .semester-summary-bar__gpa-value {
     font-size: var(--font-size-xl);
   }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   WHAT-IF FOOTER
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* Idle toggle — sits in footer as a peer action button */
+.course-table__whatif-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 32px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  background: none;
+  border: 1px solid var(--color-border-strong);
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  transition: background-color var(--transition-fast),
+              border-color var(--transition-fast),
+              color var(--transition-fast);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.course-table__whatif-toggle:hover {
+  background-color: var(--color-surface-2);
+  color: var(--color-text-primary);
+}
+
+/* Active unit — one accent-bordered container wrapping all three segments */
+.course-table__whatif-unit {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background-color: rgba(244, 162, 97, 0.06);
+  flex-shrink: 0;
+  animation: slideDown 150ms ease;
+}
+
+/* Segment 1: exit action */
+.course-table__whatif-exit {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 32px;
+  padding: 0 var(--space-3);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-accent-dark);
+  white-space: nowrap;
+  transition: background-color var(--transition-fast);
+  outline: none;
+}
+
+.course-table__whatif-exit:hover {
+  background-color: rgba(244, 162, 97, 0.16);
+}
+
+.course-table__whatif-exit:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+/* Segment 2: ⓘ divider */
+.course-table__whatif-info-seg {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 32px;
+  background: none;
+  border: none;
+  border-left: 1px solid rgba(244, 162, 97, 0.35);
+  cursor: pointer;
+  color: var(--color-accent-dark);
+  flex-shrink: 0;
+  outline: none;
+  transition: background-color var(--transition-fast);
+}
+
+.course-table__whatif-info-seg:hover {
+  background-color: rgba(244, 162, 97, 0.16);
+}
+
+.course-table__whatif-info-seg:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+/* Segment 3: GPA result */
+.course-table__whatif-result {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 32px;
+  padding: 0 var(--space-3) 0 var(--space-2);
+  border-left: 1px solid rgba(244, 162, 97, 0.35);
+}
+
+.course-table__whatif-result-tilde {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-accent-dark);
+  opacity: 0.75;
+}
+
+.course-table__whatif-result-value {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-accent-dark);
+  letter-spacing: var(--letter-spacing-cgpa);
+  line-height: 1;
+}
+
+.course-table__whatif-gpa-delta {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+.course-table__whatif-gpa-delta--up {
+  color: var(--color-success);
+}
+
+.course-table__whatif-gpa-delta--down {
+  color: var(--color-danger);
+}
+
+
+/* ── What-if grade selector in CourseRow ──────────────────────────────────── */
+
+.course-input--whatif {
+  border-color: var(--color-accent);
+  background-color: rgba(244, 162, 97, 0.08);
+  color: var(--color-accent-dark);
+  margin-top: 2px;
+}
+
+.course-input--whatif:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px rgba(244, 162, 97, 0.18);
+  color: var(--color-text-primary);
+  background-color: #fff;
+}
+
+.course-row__real-grade-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-muted);
+  background-color: var(--color-surface-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  text-align: center;
 }

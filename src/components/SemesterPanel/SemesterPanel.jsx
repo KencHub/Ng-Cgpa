@@ -1,23 +1,53 @@
 // ── SemesterPanel.jsx ─────────────────────────────────────────────────────────
-// The active semester's full view: header, course table, and summary bar.
-//
-// SemesterHeader handles:
-//   - Label editing (double-click to rename, Enter/Escape/blur to commit)
-//   - GPA display
-//   - Inline confirmation before destructive actions (clear / delete)
-//   - Collapse toggle
-//
-// Semester-level validation warnings (CU too high / too low) are computed
-// here and shown between the header and the course table.
-//
-// CourseTable is from Batch 16. SemesterSummaryBar is from Batch 18.
-
+// Changed: What-if GPA removed from SemesterHeader.
+// Changed: whatIfSemesterGPA and gpa passed to CourseTable instead,
+//          where the bar shows them inline beside the toggle button.
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import CourseTable       from "./CourseTable.jsx";
+import CourseTable        from "./CourseTable.jsx";
 import SemesterSummaryBar from "./SemesterSummaryBar.jsx";
 import { computeSemesterSummary } from "../../utils/calculator.js";
 import "./SemesterPanel.css";
+
+
+// ── What-if semester GPA helper ───────────────────────────────────────────────
+
+function computeWhatIfSemesterGPA(courses, gradeTable, whatIfGrades) {
+  if (!Array.isArray(courses) || !whatIfGrades) return null;
+
+  const hasAnyOverride = courses.some(
+    (c) => c.id in whatIfGrades && whatIfGrades[c.id]
+  );
+  if (!hasAnyOverride) return null;
+
+  let totalCU = 0;
+  let totalQP = 0;
+
+  for (const course of courses) {
+    const cu = parseFloat(course.creditUnits);
+    if (isNaN(cu) || cu <= 0) continue;
+
+    let gp = null;
+    const override = whatIfGrades[course.id];
+    if (override) {
+      const entry = gradeTable.find((g) => g.letter === override);
+      gp = entry ? entry.point : null;
+    } else if (
+      course.gradePoint !== null &&
+      course.gradePoint !== undefined &&
+      !isNaN(course.gradePoint)
+    ) {
+      gp = course.gradePoint;
+    }
+
+    if (gp === null) continue;
+    totalQP += cu * gp;
+    totalCU += cu;
+  }
+
+  if (totalCU === 0) return null;
+  return Math.round((totalQP / totalCU) * 10000) / 10000;
+}
 
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -35,18 +65,29 @@ export default function SemesterPanel({
   onClearSemester,
   onToggleCollapse,
   onOpenImport,
+  whatIfMode,
+  whatIfGrades,
+  onWhatIfToggle,
+  onWhatIfGradeChange,
 }) {
-  // Semester-level derived data
   const { totalCU, totalQP, gpa } = useMemo(
     () => computeSemesterSummary(semester, activeGradeTable),
     [semester, activeGradeTable]
   );
 
-  // Semester-level validation warnings
   const warnings = useMemo(
     () => getSemesterWarnings(semester.courses, totalCU),
     [semester.courses, totalCU]
   );
+
+  const whatIfSemesterGPA = useMemo(() => {
+    if (!whatIfMode) return null;
+    return computeWhatIfSemesterGPA(
+      semester.courses,
+      activeGradeTable,
+      whatIfGrades
+    );
+  }, [whatIfMode, whatIfGrades, semester.courses, activeGradeTable]);
 
   return (
     <div
@@ -66,7 +107,6 @@ export default function SemesterPanel({
       {!semester.isCollapsed && (
         <div className="semester-panel__body">
 
-          {/* Semester-level validation warnings */}
           {warnings.length > 0 && (
             <div className="semester-panel__warnings">
               {warnings.map((w) => (
@@ -75,7 +115,6 @@ export default function SemesterPanel({
             </div>
           )}
 
-          {/* Course table */}
           <CourseTable
             courses={semester.courses}
             semesterId={semester.id}
@@ -85,9 +124,14 @@ export default function SemesterPanel({
             onRemoveCourse={onRemoveCourse}
             onUpdateCourse={onUpdateCourse}
             onOpenImport={onOpenImport}
+            whatIfMode={whatIfMode}
+            whatIfGrades={whatIfGrades}
+            onWhatIfToggle={onWhatIfToggle}
+            onWhatIfGradeChange={onWhatIfGradeChange}
+            whatIfSemesterGPA={whatIfSemesterGPA}
+            gpa={gpa}
           />
 
-          {/* Summary bar */}
           <SemesterSummaryBar
             totalCU={totalCU}
             totalQP={totalQP}
@@ -115,17 +159,14 @@ function SemesterHeader({
   onClearSemester,
   onToggleCollapse,
 }) {
-  // ── Label editing ─────────────────────────────────────────────────────────
   const [isEditing,  setIsEditing]  = useState(false);
   const [editValue,  setEditValue]  = useState(semester.label);
   const labelInputRef = useRef(null);
 
-  // Sync edit value when label changes externally
   useEffect(() => {
     if (!isEditing) setEditValue(semester.label);
   }, [semester.label, isEditing]);
 
-  // Focus and select on edit start
   useEffect(() => {
     if (isEditing && labelInputRef.current) {
       labelInputRef.current.focus();
@@ -159,9 +200,7 @@ function SemesterHeader({
     if (e.key === "Escape") { e.preventDefault(); cancelEdit(); }
   }
 
-  // ── Inline confirmation ───────────────────────────────────────────────────
   const [confirmState, setConfirmState] = useState(null);
-  // null | { type: 'clear' | 'delete' }
 
   function requestConfirm(type) {
     setIsEditing(false);
@@ -174,11 +213,8 @@ function SemesterHeader({
     setConfirmState(null);
   }
 
-  function handleCancelConfirm() {
-    setConfirmState(null);
-  }
+  function handleCancelConfirm() { setConfirmState(null); }
 
-  // Auto-dismiss confirmation after 6 seconds
   useEffect(() => {
     if (!confirmState) return;
     const timer = setTimeout(handleCancelConfirm, 6000);
@@ -192,11 +228,8 @@ function SemesterHeader({
 
   return (
     <div className="semester-header">
-
-      {/* ── Main row ─────────────────────────────────────────────────────── */}
       <div className="semester-header__main">
 
-        {/* Collapse toggle */}
         <button
           className="btn-icon semester-header__collapse"
           onClick={() => onToggleCollapse(semester.id)}
@@ -207,7 +240,6 @@ function SemesterHeader({
           <IconChevron open={!semester.isCollapsed} />
         </button>
 
-        {/* Label — editable on double-click */}
         <div className="semester-header__label-wrap">
           {isEditing ? (
             <input
@@ -235,10 +267,9 @@ function SemesterHeader({
           )}
         </div>
 
-        {/* Right section: GPA + actions */}
         <div className="semester-header__right">
 
-          {/* GPA display */}
+          {/* Real GPA only — what-if GPA lives in the CourseTable bar */}
           {gpa !== null ? (
             <span className="semester-header__gpa" aria-label={`Semester GPA: ${gpa.toFixed(2)}`}>
               <span className="semester-header__gpa-label">GPA</span>
@@ -252,42 +283,25 @@ function SemesterHeader({
             )
           )}
 
-          {/* Action buttons */}
           <div className="semester-header__actions" role="group" aria-label="Semester actions">
-            <button
-              className="btn-icon semester-header__action-btn"
-              onClick={startEditing}
-              title="Rename semester"
-              aria-label="Rename semester"
-              disabled={isEditing}
-            >
+            <button className="btn-icon semester-header__action-btn"
+              onClick={startEditing} title="Rename semester" aria-label="Rename semester" disabled={isEditing}>
               <IconEdit />
             </button>
-
-            <button
-              className="btn-icon semester-header__action-btn"
-              onClick={() => requestConfirm("clear")}
-              title="Clear all courses"
-              aria-label="Clear all courses in this semester"
-              disabled={courseCount === 0}
-            >
+            <button className="btn-icon semester-header__action-btn"
+              onClick={() => requestConfirm("clear")} title="Clear all courses"
+              aria-label="Clear all courses in this semester" disabled={courseCount === 0}>
               <IconClear />
             </button>
-
-            <button
-              className="btn-icon semester-header__action-btn semester-header__action-btn--danger"
-              onClick={() => requestConfirm("delete")}
-              title="Delete semester"
-              aria-label="Delete this semester"
-            >
+            <button className="btn-icon semester-header__action-btn semester-header__action-btn--danger"
+              onClick={() => requestConfirm("delete")} title="Delete semester" aria-label="Delete this semester">
               <IconTrash />
             </button>
           </div>
-
         </div>
+
       </div>
 
-      {/* ── Inline confirmation bar ────────────────────────────────────────── */}
       {confirmState && (
         <div
           className={`semester-confirm${isDangerConfirm ? " semester-confirm--danger" : " semester-confirm--warning"}`}
@@ -302,16 +316,12 @@ function SemesterHeader({
             >
               {confirmState.type === "delete" ? "Delete" : "Clear"}
             </button>
-            <button
-              className="btn btn-ghost semester-confirm__btn-cancel"
-              onClick={handleCancelConfirm}
-            >
+            <button className="btn btn-ghost semester-confirm__btn-cancel" onClick={handleCancelConfirm}>
               Cancel
             </button>
           </div>
         </div>
       )}
-
     </div>
   );
 }
@@ -322,37 +332,30 @@ function SemesterHeader({
 function WarningBanner({ type, message }) {
   return (
     <div className={`semester-warning semester-warning--${type}`} role="status">
-      <span className="semester-warning__icon" aria-hidden="true">
-        <IconWarning />
-      </span>
+      <span className="semester-warning__icon" aria-hidden="true"><IconWarning /></span>
       <span className="semester-warning__text">{message}</span>
     </div>
   );
 }
 
 
-// ── Semester-level validation ─────────────────────────────────────────────────
+// ── Semester validation ───────────────────────────────────────────────────────
 
 function getSemesterWarnings(courses, totalCU) {
   if (!Array.isArray(courses) || courses.length === 0) return [];
   const warnings = [];
-
   if (totalCU > 30) {
     warnings.push({
-      id:      "cu-high",
-      type:    "warning",
+      id: "cu-high", type: "warning",
       message: `This semester has ${totalCU} credit units. Most semesters carry 15 to 24 units. Check your entries.`,
     });
   }
-
   if (totalCU < 6 && courses.length > 0) {
     warnings.push({
-      id:      "cu-low",
-      type:    "warning",
+      id: "cu-low", type: "warning",
       message: "This semester total seems low. Verify your credit units.",
     });
   }
-
   return warnings;
 }
 
@@ -361,23 +364,17 @@ function getSemesterWarnings(courses, totalCU) {
 
 function IconChevron({ open }) {
   return (
-    <svg width="16" height="16" viewBox="0 0 16 16"
-      fill="none" aria-hidden="true" focusable="false"
-      style={{ transform: open ? "rotate(0deg)" : "rotate(-90deg)",
-               transition: "transform 200ms ease" }}
-    >
-      <path d="M4 6l4 4 4-4" stroke="currentColor"
-        strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false"
+      style={{ transform: open ? "rotate(0deg)" : "rotate(-90deg)", transition: "transform 200ms ease" }}>
+      <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 
 function IconEdit() {
   return (
-    <svg width="14" height="14" viewBox="0 0 14 14"
-      fill="none" aria-hidden="true" focusable="false">
-      <path d="M9.5 2.5l2 2L4 12H2v-2L9.5 2.5z"
-        stroke="currentColor" strokeWidth="1.3"
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true" focusable="false">
+      <path d="M9.5 2.5l2 2L4 12H2v-2L9.5 2.5z" stroke="currentColor" strokeWidth="1.3"
         strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
@@ -385,36 +382,29 @@ function IconEdit() {
 
 function IconClear() {
   return (
-    <svg width="14" height="14" viewBox="0 0 14 14"
-      fill="none" aria-hidden="true" focusable="false">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true" focusable="false">
       <path d="M2 4h10M5 4V2.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 .5.5V4M3 4l.8 7.5a1 1 0 0 0 1 .9h4.4a1 1 0 0 0 1-.9L11 4"
-        stroke="currentColor" strokeWidth="1.3"
-        strokeLinecap="round" strokeLinejoin="round" />
+        stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 
 function IconTrash() {
   return (
-    <svg width="14" height="14" viewBox="0 0 14 14"
-      fill="none" aria-hidden="true" focusable="false">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true" focusable="false">
       <path d="M2 3.5h10M5.5 3.5V2.5a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 .5.5v1M3.5 3.5l.6 7.5a1 1 0 0 0 1 .9h3.8a1 1 0 0 0 1-.9l.6-7.5"
-        stroke="currentColor" strokeWidth="1.3"
-        strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M5.5 6.5v3M8.5 6.5v3" stroke="currentColor"
-        strokeWidth="1.3" strokeLinecap="round" />
+        stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M5.5 6.5v3M8.5 6.5v3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
     </svg>
   );
 }
 
 function IconWarning() {
   return (
-    <svg width="14" height="14" viewBox="0 0 14 14"
-      fill="none" aria-hidden="true" focusable="false">
-      <path d="M7 1.5L13 12H1L7 1.5z" stroke="currentColor"
-        strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M7 5.5v3" stroke="currentColor"
-        strokeWidth="1.5" strokeLinecap="round" />
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true" focusable="false">
+      <path d="M7 1.5L13 12H1L7 1.5z" stroke="currentColor" strokeWidth="1.3"
+        strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M7 5.5v3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
       <circle cx="7" cy="10" r="0.7" fill="currentColor" />
     </svg>
   );

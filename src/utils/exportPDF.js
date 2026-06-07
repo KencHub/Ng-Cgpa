@@ -67,6 +67,9 @@ export function generateAndDownloadPDF({
   }
 
   // ── Semester Breakdown summary ─────────────────────────────────────────────
+  // Always add a fresh page here. buildCourseDetailPages no longer adds a
+  // trailing page after the last semester, so this single addPage() is
+  // sufficient and never creates a blank page.
   doc.addPage();
   buildPage2(doc, { semesterSummaries, institution, cgpa });
 
@@ -357,6 +360,14 @@ function hasData(course) {
   return cu > 0;
 }
 
+// ← FIX: The previous for…of loop called doc.addPage() after every semester
+// including the last one. The main flow also calls doc.addPage() before
+// buildPage2, so two consecutive page-adds created a blank page between the
+// course detail section and the semester breakdown.
+//
+// Fix: pre-filter to only renderable semesters, use an indexed for loop, and
+// only add a page BETWEEN semesters — never after the last one. The main flow's
+// unconditional doc.addPage() before buildPage2 then works correctly in all cases.
 function buildCourseDetailPages(doc, { semesters }) {
   let currentStartY = MARGIN.top + 10;
 
@@ -365,11 +376,18 @@ function buildCourseDetailPages(doc, { semesters }) {
   // It does not repeat for subsequent semesters that also have NC courses.
   let ncFootnoteAdded = false;
 
-  for (const sem of semesters) {
-    if (!Array.isArray(sem.courses) || sem.courses.length === 0) continue;
+  // Pre-filter to only semesters that will actually render, so we can
+  // reliably detect the last one and skip the trailing page-add.
+  const renderableSemesters = semesters.filter((sem) =>
+    Array.isArray(sem.courses) &&
+    sem.courses.filter(hasData).length > 0
+  );
+
+  for (let si = 0; si < renderableSemesters.length; si++) {
+    const sem    = renderableSemesters[si];
+    const isLast = si === renderableSemesters.length - 1;
 
     const validCourses = sem.courses.filter(hasData);
-    if (validCourses.length === 0) continue;
 
     // Only true when this semester has at least one 0 CU course with data.
     const hasNCCourses = validCourses.some((c) => Number(c.creditUnits) === 0);
@@ -491,11 +509,15 @@ function buildCourseDetailPages(doc, { semesters }) {
       ncFootnoteAdded = true;
     }
 
-    if (tableEndY > PAGE_HEIGHT - 70) {
-      doc.addPage();
-      currentStartY = MARGIN.top + 10;
-    } else {
-      currentStartY = tableEndY + 10;
+    // Only add a new page between semesters. After the last renderable
+    // semester we do nothing — the caller adds the page for the next section.
+    if (!isLast) {
+      if (tableEndY > PAGE_HEIGHT - 70) {
+        doc.addPage();
+        currentStartY = MARGIN.top + 10;
+      } else {
+        currentStartY = tableEndY + 10;
+      }
     }
   }
 }

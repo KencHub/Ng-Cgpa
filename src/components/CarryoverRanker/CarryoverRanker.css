@@ -1,0 +1,212 @@
+/* ── CarryoverRanker.css ───────────────────────────────────────────────────── */
+
+.carryover-ranker {
+  overflow: hidden;
+}
+
+
+/* ── Header ──────────────────────────────────────────────────────────────────── */
+
+.carryover-ranker__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4) var(--space-5);
+  cursor: pointer;
+  user-select: none;
+  transition: background-color var(--transition-fast);
+}
+
+.carryover-ranker__header:hover {
+  background-color: var(--color-surface-2);
+}
+
+.carryover-ranker__header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.carryover-ranker__label {
+  color: var(--color-text-muted);
+}
+
+.carryover-ranker__count {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-danger);
+  background-color: var(--color-danger-light);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-pill);
+}
+
+.carryover-ranker__chevron {
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+
+/* ── Body ────────────────────────────────────────────────────────────────────── */
+
+.carryover-ranker__body {
+  padding: 0 var(--space-5) var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.carryover-ranker__intro {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-relaxed);
+  padding-top: var(--space-1);
+}
+
+
+/* ── Individual item ─────────────────────────────────────────────────────────── */
+
+.carryover-item {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.carryover-item--top {
+  border-color: var(--color-danger);
+  border-left: 3px solid var(--color-danger);
+}
+
+.carryover-item__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background-color: var(--color-surface-2);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.carryover-item__rank {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-muted);
+  min-width: 20px;
+}
+
+.carryover-item--top .carryover-item__rank {
+  color: var(--color-danger);
+}
+
+.carryover-item__info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.carryover-item__name {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.carryover-item__detail {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.carryover-item__badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  background-color: var(--color-danger);
+  color: #fff;
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: var(--font-weight-bold);
+  flex-shrink: 0;
+}
+
+
+/* ── Gain rows ───────────────────────────────────────────────────────────────── */
+
+.carryover-item__gains {
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.carryover-gain {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.carryover-gain__grade {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  background-color: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+
+.carryover-gain__arrow {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.carryover-gain__cgpa {
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  min-width: 48px;
+}
+
+.carryover-gain__delta {
+  font-size: var(--font-size-xs);
+  color: var(--color-success);
+  font-weight: var(--font-weight-medium);
+  background-color: var(--color-success-light);
+  padding: 1px 6px;
+  border-radius: var(--radius-pill);
+}
+
+.carryover-gain__class-change {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-primary);
+  background-color: rgba(27, 67, 50, 0.08);
+  padding: 1px 6px;
+  border-radius: var(--radius-pill);
+  margin-left: auto;
+}
+
+.carryover-item__expand {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-primary-light);
+  cursor: pointer;
+  text-align: left;
+  font-weight: var(--font-weight-medium);
+  margin-top: var(--space-1);
+}
+
+.carryover-item__expand:hover {
+  text-decoration: underline;
+}
