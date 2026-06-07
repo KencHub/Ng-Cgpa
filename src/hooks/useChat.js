@@ -2,6 +2,8 @@
 // Groq API (via /api/chat Vercel function) with knowledge base fallback.
 //
 // Changes in this version:
+//   - Chat messages persisted to localStorage with 24-hour expiry.
+//   - API history reconstructed from saved messages on page load.
 //   - fmtReq never includes numbers above the scale maximum in the prompt.
 //     Groq cannot quote what it never sees.
 //   - HOW TO RESPOND block includes scale guard and anti-filler rules.
@@ -10,7 +12,7 @@
 //   - Multi-semester consistent GPA figures pre-computed in JS.
 //     Model reads ready numbers — no arithmetic delegated to Groq.
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 
 import { generateId }                       from "../utils/idGenerator.js";
 import { matchQuery }                       from "../utils/queryMatcher.js";
@@ -25,6 +27,9 @@ export { SUGGESTED_CHIPS };
 const MAX_API_HISTORY_TURNS = 6;
 const RESPONSE_DELAY_MS     = 320;
 
+const CHAT_STORAGE_KEY = "ngcgpa_chat_v1";
+const CHAT_EXPIRY_MS   = 24 * 60 * 60 * 1000; // 24 hours
+
 const NO_MATCH_RESPONSE =
   "I don't have a specific answer for that right now. Here are things I can help with:\n\n" +
   "- Am I on track for First Class?\n" +
@@ -34,6 +39,37 @@ const NO_MATCH_RESPONSE =
   "- How do I move from a 2:2 to a 2:1?\n" +
   "- What is the minimum to avoid Third Class?\n\n" +
   "Try rephrasing, or tap one of the suggestions above.";
+
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function loadChatFromStorage() {
+  try {
+    const raw = localStorage.getItem(CHAT_STORAGE_KEY);
+    if (!raw) return { messages: [], history: [] };
+
+    const parsed = JSON.parse(raw);
+    if (!parsed?.lastMessageAt) return { messages: [], history: [] };
+
+    const expired = Date.now() - parsed.lastMessageAt > CHAT_EXPIRY_MS;
+    if (expired) {
+      localStorage.removeItem(CHAT_STORAGE_KEY);
+      return { messages: [], history: [] };
+    }
+
+    const messages = parsed.messages ?? [];
+
+    // Reconstruct API history from non-KB, non-error messages only.
+    // This gives Groq context continuity across page refreshes.
+    const history = messages
+      .filter(m => !m.isFromKnowledgeBase && !m.isError)
+      .map(m => ({ role: m.role, content: m.content }));
+
+    return { messages, history };
+  } catch {
+    return { messages: [], history: [] };
+  }
+}
 
 
 // ── Hook ──────────────────────────────────────────────────────────────────────
@@ -54,15 +90,36 @@ export function useChat({
   projection,
   projectionResult,
 }) {
-  const [messages,     setMessages]     = useState([]);
+  // ── Load persisted chat on first render ──────────────────────────────────
+  const { messages: savedMessages, history: savedHistory } = loadChatFromStorage();
+
+  const [messages,     setMessages]     = useState(savedMessages);
   const [isLoading,    setIsLoading]    = useState(false);
   const [isAPIOnline,  setIsAPIOnline]  = useState(true);
   const [pendingRetry, setPendingRetry] = useState(null);
 
   // API-formatted conversation history.
   // Separate from `messages` so KB/error messages never pollute the API context.
+  // Seeded from localStorage on mount for cross-refresh continuity.
   // Shape: Array<{ role: "user" | "assistant", content: string }>
-  const apiHistoryRef = useRef([]);
+  const apiHistoryRef = useRef(savedHistory);
+
+
+  // ── Persist messages to localStorage ─────────────────────────────────────
+  // Fires whenever messages change. lastMessageAt resets on every new message,
+  // so active conversations naturally extend their own 24-hour window.
+
+  useEffect(() => {
+    if (messages.length === 0) return;
+    try {
+      localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify({
+        messages,
+        lastMessageAt: Date.now(),
+      }));
+    } catch {
+      // Storage full or unavailable — silent fail.
+    }
+  }, [messages]);
 
 
   // ── Build system prompt ────────────────────────────────────────────────────
@@ -134,10 +191,6 @@ export function useChat({
 
 
     // ── Required GPA calculator ──────────────────────────────────────────────
-    // Returns the GPA needed every semester across futureCU total future
-    // credit units to reach targetCGPA. When futureCU spans multiple
-    // semesters (e.g. 4 × 18 = 72), the result is the consistent per-semester
-    // GPA the student must sustain across every one of those semesters.
 
     function reqGPAat(targetCGPA, futureCU) {
       if (!totalCU || !futureCU) return null;
@@ -157,10 +210,6 @@ export function useChat({
 
 
     // ── Format required GPA for display in prompt ────────────────────────────
-    //
-    // CRITICAL: When the required GPA exceeds the scale maximum, the raw
-    // impossible number is NOT written into the prompt string.
-    // Groq cannot quote what it never sees.
 
     function fmtReq(val) {
       if (val === null)          return `N/A — no course data entered yet`;
@@ -171,8 +220,6 @@ export function useChat({
       return `${val.toFixed(2)} — achievable`;
     }
 
-    // Format for multi-semester consistent GPA figures.
-    // Uses different language since "one semester" wording does not apply here.
     function fmtConsistent(val, sems) {
       if (val === null)    return `N/A — no course data entered yet`;
       if (val < 0)         return `Already achieved`;
@@ -187,16 +234,12 @@ export function useChat({
 
     const hasData = totalCU > 0;
 
-    const toFirst18 = hasData ? reqGPAat(firstMin, 18)      : null;
-    const toUpper18 = hasData ? reqGPAat(upperMin, 18)      : null;
-    const toLower18 = hasData ? reqGPAat(lowerMin, 18)      : null;
-    const maxIn2    = hasData ? maxReachableCGPA(2)          : null;
-    const maxIn4    = hasData ? maxReachableCGPA(4)          : null;
-    const maxIn6    = hasData ? maxReachableCGPA(6)          : null;
-
-    // Consistent GPA per semester to approach First Class over multiple semesters.
-    // reqGPAat(firstMin, N*18) gives the average GPA needed across N semesters
-    // of 18 CU each — which equals the consistent per-semester GPA required.
+    const toFirst18    = hasData ? reqGPAat(firstMin, 18)      : null;
+    const toUpper18    = hasData ? reqGPAat(upperMin, 18)      : null;
+    const toLower18    = hasData ? reqGPAat(lowerMin, 18)      : null;
+    const maxIn2       = hasData ? maxReachableCGPA(2)         : null;
+    const maxIn4       = hasData ? maxReachableCGPA(4)         : null;
+    const maxIn6       = hasData ? maxReachableCGPA(6)         : null;
     const toFirst4Sems = hasData ? reqGPAat(firstMin, 4 * 18) : null;
     const toFirst6Sems = hasData ? reqGPAat(firstMin, 6 * 18) : null;
 
@@ -409,6 +452,11 @@ HOW TO RESPOND:
     setIsLoading(false);
     setPendingRetry(null);
     apiHistoryRef.current = [];
+    try {
+      localStorage.removeItem(CHAT_STORAGE_KEY);
+    } catch {
+      // Silent
+    }
   }, []);
 
 
