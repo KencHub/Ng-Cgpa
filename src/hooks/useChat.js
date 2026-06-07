@@ -7,6 +7,8 @@
 //   - HOW TO RESPOND block includes scale guard and anti-filler rules.
 //   - Full conversation history (apiHistoryRef) sent to Groq every turn.
 //   - System prompt built here. /api/chat.js is a thin pass-through.
+//   - Multi-semester consistent GPA figures pre-computed in JS.
+//     Model reads ready numbers — no arithmetic delegated to Groq.
 
 import { useState, useCallback, useRef } from "react";
 
@@ -132,6 +134,10 @@ export function useChat({
 
 
     // ── Required GPA calculator ──────────────────────────────────────────────
+    // Returns the GPA needed every semester across futureCU total future
+    // credit units to reach targetCGPA. When futureCU spans multiple
+    // semesters (e.g. 4 × 18 = 72), the result is the consistent per-semester
+    // GPA the student must sustain across every one of those semesters.
 
     function reqGPAat(targetCGPA, futureCU) {
       if (!totalCU || !futureCU) return null;
@@ -165,17 +171,34 @@ export function useChat({
       return `${val.toFixed(2)} — achievable`;
     }
 
+    // Format for multi-semester consistent GPA figures.
+    // Uses different language since "one semester" wording does not apply here.
+    function fmtConsistent(val, sems) {
+      if (val === null)    return `N/A — no course data entered yet`;
+      if (val < 0)         return `Already achieved`;
+      if (val > scaleMax)  return `Not reachable even over ${sems} perfect semesters`;
+      if (val > scaleMax * 0.90) return `${val.toFixed(2)} per semester — very challenging`;
+      if (val > scaleMax * 0.75) return `${val.toFixed(2)} per semester — challenging but realistic`;
+      return `${val.toFixed(2)} per semester — achievable`;
+    }
+
 
     // ── Pre-compute key figures ──────────────────────────────────────────────
 
     const hasData = totalCU > 0;
 
-    const toFirst18 = hasData ? reqGPAat(firstMin, 18) : null;
-    const toUpper18 = hasData ? reqGPAat(upperMin, 18) : null;
-    const toLower18 = hasData ? reqGPAat(lowerMin, 18) : null;
-    const maxIn2    = hasData ? maxReachableCGPA(2)     : null;
-    const maxIn4    = hasData ? maxReachableCGPA(4)     : null;
-    const maxIn6    = hasData ? maxReachableCGPA(6)     : null;
+    const toFirst18 = hasData ? reqGPAat(firstMin, 18)      : null;
+    const toUpper18 = hasData ? reqGPAat(upperMin, 18)      : null;
+    const toLower18 = hasData ? reqGPAat(lowerMin, 18)      : null;
+    const maxIn2    = hasData ? maxReachableCGPA(2)          : null;
+    const maxIn4    = hasData ? maxReachableCGPA(4)          : null;
+    const maxIn6    = hasData ? maxReachableCGPA(6)          : null;
+
+    // Consistent GPA per semester to approach First Class over multiple semesters.
+    // reqGPAat(firstMin, N*18) gives the average GPA needed across N semesters
+    // of 18 CU each — which equals the consistent per-semester GPA required.
+    const toFirst4Sems = hasData ? reqGPAat(firstMin, 4 * 18) : null;
+    const toFirst6Sems = hasData ? reqGPAat(firstMin, 6 * 18) : null;
 
 
     // ── Student profile ──────────────────────────────────────────────────────
@@ -222,21 +245,18 @@ To reach 2:2 (${lowerMin}):          ${fmtReq(toLower18)}
 MAXIMUM CGPA STILL REACHABLE (scoring ${scaleMax}.00 every remaining semester at 18 CU):
 After 2 more perfect semesters: ${maxIn2 ?? "N/A"}
 After 4 more perfect semesters: ${maxIn4 ?? "N/A"}
-After 6 more perfect semesters: ${maxIn6 ?? "N/A"}` : "No course data entered yet — ask the student to add their courses first."}
+After 6 more perfect semesters: ${maxIn6 ?? "N/A"}
+
+CONSISTENT GPA PER SEMESTER TO APPROACH FIRST CLASS OVER MULTIPLE SEMESTERS:
+Over 4 semesters (72 CU total): ${fmtConsistent(toFirst4Sems, 4)}
+Over 6 semesters (108 CU total): ${fmtConsistent(toFirst6Sems, 6)}` : "No course data entered yet — ask the student to add their courses first."}
 
 HOW TO RESPOND:
 - Answer exactly what was asked. Do not dump all figures into every response.
 - If they ask what GPA they need, give the single most relevant figure (18 CU default). State clearly if it is achievable or not, then move on.
 - If they ask how close they are, lead with the gap in CGPA points and what it means — not a list of required GPAs.
-- SCALE RULE: No GPA or CGPA can ever exceed ${scaleMax} at this university. If a required GPA shows "Not achievable in one semester", never mention any number above ${scaleMax}. Say clearly the target cannot be reached in one semester. Then tell the student two things only: (1) the maximum CGPA they can still reach from the figures above, and (2) roughly how many semesters of strong consistent performance it would take to get close to that target. Do not pivot to lower classifications. Do not talk about maintaining their current class unless they specifically ask about that.
-- When a target is not achievable, open with a clean declarative like
-  "First Class isn't reachable in one semester from your current standing."
-  Never say "To reach [target], it's not achievable" — that is grammatically
-  broken. Then give a specific number: state what consistent GPA per semester
-  over 4 semesters would get them closest to that target, calculated as:
-  (targetCGPA × (totalCU + 4×18) - totalQP) / (4×18). Round to 2 decimal
-  places. If that number also exceeds the scale maximum, say so and use 6
-  semesters instead.
+- SCALE RULE: No GPA or CGPA can ever exceed ${scaleMax} at this university. If a required GPA shows "Not achievable in one semester", never mention any number above ${scaleMax}. Say clearly the target cannot be reached in one semester. Then tell the student two things only: (1) the maximum CGPA they can still reach from the figures above, and (2) the consistent GPA per semester from the "CONSISTENT GPA PER SEMESTER" section above. Do not pivot to lower classifications. Do not talk about maintaining their current class unless they specifically ask about that.
+- When a target is not achievable in one semester, open with a clean declarative like "First Class isn't reachable in one semester from your current standing." Never say "To reach [target], it's not achievable" — that is grammatically broken. Then use the pre-computed "CONSISTENT GPA PER SEMESTER TO APPROACH FIRST CLASS" figures from the data above. State the 4-semester figure if it is within the scale maximum. If not, state the 6-semester figure. If neither is achievable, tell the student First Class is out of reach entirely and they should focus on securing the best class still available to them. Never say "strong consistent performance" without attaching a specific GPA number.
 - Never open with filler phrases like "You're looking for a specific answer", "Great question", "That's a good question", or any sentence that restates what the student just asked. Start directly with the answer or the key number.
 - Keep responses under 150 words unless the student asks for a detailed breakdown.
 - Vary your phrasing — do not start every response the same way.
