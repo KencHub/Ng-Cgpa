@@ -90,8 +90,8 @@ export function useChat({
       cgpa:               cgpa ?? null,
       degreeClass:        degreeClass ?? null,
       semesterCount:      (semesters ?? []).length,
-      totalCreditUnits:   totals?.totalCreditUnits  ?? 0,
-      totalQualityPoints: totals?.totalQualityPoints ?? 0,
+      totalCreditUnits:   totals?.totalCU ?? 0,
+      totalQualityPoints: totals?.totalQP ?? 0,
       semesterGPAList:    semGPAs || "None yet",
       borderlineInfo,
     };

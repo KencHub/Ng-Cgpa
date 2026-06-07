@@ -50,16 +50,21 @@ export default function App() {
   const [infoModalOpen, setInfoModalOpen] = useState(false);
 
   const chat = useChat({
-    institution:           cgpa.institution,
-    student:               cgpa.student,
-    semesters:             cgpa.semesters,
-    cgpa:                  cgpa.cgpa,
-    degreeClass:           cgpa.degreeClass,
-    semesterSummaries:     cgpa.semesterSummaries,
-    totals:                cgpa.totals,
-    activeScale:           cgpa.activeScale,
-    activeClassifications: cgpa.activeClassifications,
-  });
+  institution:           cgpa.institution,
+  student:               cgpa.student,
+  semesters:             cgpa.semesters,
+  cgpa:                  cgpa.cgpa,
+  degreeClass:           cgpa.degreeClass,
+  degreeClassShort:      cgpa.degreeClassShort,
+  degreeClassEntry:      cgpa.degreeClassEntry,
+  semesterSummaries:     cgpa.semesterSummaries,
+  totals:                cgpa.totals,
+  activeScale:           cgpa.activeScale,
+  activeClassifications: cgpa.activeClassifications,
+  activePassmark:        cgpa.activePassmark,
+  projection:            cgpa.projection,
+  projectionResult:      cgpa.projectionResult,
+});
 
 
   // ── Derived convenience values ──────────────────────────────────────────────
