@@ -236,7 +236,7 @@ export default function ImprovementChat({
 
           
           
-            <FallbackNotice />
+            {!isAPIOnline && <FallbackNotice />}
           
 
           {/* Suggested chips */}
