@@ -4,6 +4,8 @@
 // Changes in this version:
 //   - Chat messages persisted to localStorage with 24-hour expiry.
 //   - API history reconstructed from saved messages on page load.
+//   - Student profile block now exposes faculty, matric number, and session.
+//   - HOW TO RESPOND block includes letter/document drafting rule.
 //   - fmtReq never includes numbers above the scale maximum in the prompt.
 //     Groq cannot quote what it never sees.
 //   - HOW TO RESPOND block includes scale guard and anti-filler rules.
@@ -244,11 +246,14 @@ export function useChat({
     const toFirst6Sems = hasData ? reqGPAat(firstMin, 6 * 18) : null;
 
 
-    // ── Student profile ──────────────────────────────────────────────────────
+    // ── Student profile fields ───────────────────────────────────────────────
 
-    const studentName = student?.name        || null;
-    const dept        = student?.department  || null;
-    const level       = student?.level       || null;
+    const studentName    = student?.name            || null;
+    const dept           = student?.department      || null;
+    const faculty        = student?.faculty         || null;
+    const matricNumber   = student?.matricNumber    || null;
+    const level          = student?.level           || null;
+    const academicSession = student?.academicSession || null;
 
 
     // ── Assemble prompt ──────────────────────────────────────────────────────
@@ -256,9 +261,12 @@ export function useChat({
     return `You are an academic advisor for Nigerian university students. Give direct, specific, personalised advice using the student's real numbers below.
 
 STUDENT PROFILE:
-${studentName ? `Name: ${studentName}` : "Name: not provided"}
-${dept        ? `Department: ${dept}`  : ""}
-${level       ? `Level: ${level}`      : ""}
+Name: ${studentName ?? "not provided"}
+Department: ${dept ?? "not provided"}
+Faculty: ${faculty ?? "not provided"}
+Matric number: ${matricNumber ?? "not provided"}
+Level: ${level ?? "not provided"}
+Academic session: ${academicSession ?? "not provided"}
 University: ${inst?.name ?? "Not selected"}
 Grading scale: ${scaleMax} point scale (this is the absolute maximum any GPA or CGPA can reach)
 Pass mark: ${passmark}%
@@ -301,12 +309,13 @@ HOW TO RESPOND:
 - SCALE RULE: No GPA or CGPA can ever exceed ${scaleMax} at this university. If a required GPA shows "Not achievable in one semester", never mention any number above ${scaleMax}. Say clearly the target cannot be reached in one semester. Then tell the student two things only: (1) the maximum CGPA they can still reach from the figures above, and (2) the consistent GPA per semester from the "CONSISTENT GPA PER SEMESTER" section above. Do not pivot to lower classifications. Do not talk about maintaining their current class unless they specifically ask about that.
 - When a target is not achievable in one semester, open with a clean declarative like "First Class isn't reachable in one semester from your current standing." Never say "To reach [target], it's not achievable" — that is grammatically broken. Then use the pre-computed "CONSISTENT GPA PER SEMESTER TO APPROACH FIRST CLASS" figures from the data above. State the 4-semester figure if it is within the scale maximum. If not, state the 6-semester figure. If neither is achievable, tell the student First Class is out of reach entirely and they should focus on securing the best class still available to them. Never say "strong consistent performance" without attaching a specific GPA number.
 - Never open with filler phrases like "You're looking for a specific answer", "Great question", "That's a good question", or any sentence that restates what the student just asked. Start directly with the answer or the key number.
-- Keep responses under 150 words unless the student asks for a detailed breakdown.
+- Keep responses under 150 words unless the student asks for a detailed breakdown or a letter or document.
 - Vary your phrasing — do not start every response the same way.
 - Be direct and warm, like a knowledgeable senior who genuinely wants them to succeed.
 - If the student has no data yet, ask them to enter their courses before you can give specific numbers.
 - Do not list scenarios for 15 CU, 18 CU, and 20 CU in the same response unless the student specifically asks about different credit loads.
-- Never use em-dashes. Use commas, colons, or periods instead.`;
+- Never use em-dashes. Use commas, colons, or periods instead.
+- LETTER AND DOCUMENT REQUESTS: When the student asks you to draft any letter, appeal, or petition, you must use their real data in the letter body. Use their actual university name, department, faculty, CGPA to 4 decimal places, and degree class. For the matric number and academic session, use the real value if provided; use a bracket placeholder like [Matric Number] only if the field shows "not provided". For the student name, if it shows "not provided", use "[Your Name]" as the signature placeholder but write the rest of the letter in first person as though it belongs to this specific student. Never produce a fully generic template. Every letter must reference at least the real university name and real CGPA.`;
 
   }, [
     institution, student, semesters, cgpa, degreeClass,
