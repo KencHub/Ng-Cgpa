@@ -1,19 +1,12 @@
 // ── useChat.js ────────────────────────────────────────────────────────────────
 // Groq API (via /api/chat Vercel function) with knowledge base fallback.
 //
-// Key changes from previous version:
+// Changes in this version:
+//   - fmtReq never includes numbers above the scale maximum in the prompt.
+//     Groq cannot quote what it never sees.
+//   - HOW TO RESPOND block includes scale guard and anti-filler rules.
 //   - Full conversation history (apiHistoryRef) sent to Groq every turn.
-//     The model now knows what it said before and varies accordingly.
-//   - System prompt is built HERE, not in the Vercel function.
-//     The Vercel function is now a thin pass-through — it accepts
-//     { systemPrompt, messages } and forwards them to Groq verbatim.
-//   - Context gives raw numbers + a small set of pre-computed key figures.
-//     The model is told to use only what the question needs.
-//   - Anti-repetition instructions prevent the same structured breakdown
-//     appearing for every question about First Class.
-//   - Temperature note: ensure your /api/chat.js passes temperature: 0.7
-//     to Groq. temperature: 0 causes deterministic, identical outputs.
-
+//   - System prompt built here. /api/chat.js is a thin pass-through.
 
 import { useState, useCallback, useRef } from "react";
 
@@ -27,12 +20,8 @@ export { SUGGESTED_CHIPS };
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
-// Max turns kept in Groq context (each turn = 1 user + 1 assistant message).
-// Keeps token usage bounded. Older turns are dropped from the API call
-// but remain visible in the UI history.
 const MAX_API_HISTORY_TURNS = 6;
-
-const RESPONSE_DELAY_MS = 320;
+const RESPONSE_DELAY_MS     = 320;
 
 const NO_MATCH_RESPONSE =
   "I don't have a specific answer for that right now. Here are things I can help with:\n\n" +
@@ -68,27 +57,25 @@ export function useChat({
   const [isAPIOnline,  setIsAPIOnline]  = useState(true);
   const [pendingRetry, setPendingRetry] = useState(null);
 
-  // Tracks the API-formatted conversation history.
+  // API-formatted conversation history.
   // Separate from `messages` so KB/error messages never pollute the API context.
   // Shape: Array<{ role: "user" | "assistant", content: string }>
   const apiHistoryRef = useRef([]);
 
 
   // ── Build system prompt ────────────────────────────────────────────────────
-  //
-  // This runs on every send so the prompt always reflects current state.
-  // The Vercel function receives this string and passes it to Groq as-is.
 
   const buildSystemPrompt = useCallback(() => {
-    const inst         = institution;
-    const scaleMax     = inst?.scale ?? 5;
-    const classList    = inst?.classifications ?? [];
-    const totalCU      = totals?.totalCU ?? 0;
-    const totalQP      = totals?.totalQP ?? 0;
-    const cgpaVal      = cgpa ?? null;
-    const passmark     = inst?.passmark ?? 40;
+    const inst      = institution;
+    const scaleMax  = inst?.scale ?? 5;
+    const classList = inst?.classifications ?? [];
+    const totalCU   = totals?.totalCU ?? 0;
+    const totalQP   = totals?.totalQP ?? 0;
+    const cgpaVal   = cgpa ?? null;
+    const passmark  = inst?.passmark ?? 40;
 
-    // ── Classification boundaries ──────────────────────────────────────────
+
+    // ── Classification boundaries ────────────────────────────────────────────
 
     const firstMin = classList.find(c =>
       c.label?.toLowerCase().includes("first"))?.min
@@ -106,7 +93,8 @@ export function useChat({
       c.label?.toLowerCase().includes("third"))?.min
       ?? (scaleMax >= 5 ? 1.50 : 1.00);
 
-    // ── Semester GPA list ──────────────────────────────────────────────────
+
+    // ── Semester GPA list ────────────────────────────────────────────────────
 
     const semGPAs = (semesters ?? [])
       .map((s, i) => {
@@ -118,7 +106,8 @@ export function useChat({
       .filter(Boolean)
       .join(" | ");
 
-    // ── Failed courses ─────────────────────────────────────────────────────
+
+    // ── Failed courses ───────────────────────────────────────────────────────
 
     const failedCourses = (semesters ?? [])
       .flatMap(s =>
@@ -127,7 +116,8 @@ export function useChat({
           .map(c => `${c.name || "Unnamed"} (${c.creditUnits} units, ${s.label})`)
       );
 
-    // ── Borderline check ───────────────────────────────────────────────────
+
+    // ── Borderline check ─────────────────────────────────────────────────────
 
     const borderlineNote = (() => {
       if (cgpaVal === null) return "No data yet";
@@ -140,17 +130,18 @@ export function useChat({
       return "Not borderline";
     })();
 
-    // ── Key required-GPA figures (18 CU default only) ─────────────────────
-    // We pre-compute the most useful figure (18 CU) and the max reachable
-    // CGPA for 2 and 4 semesters. The model is told to calculate other
-    // credit unit loads itself only if the student asks.
+
+    // ── Required GPA calculator ──────────────────────────────────────────────
 
     function reqGPAat(targetCGPA, futureCU) {
       if (!totalCU || !futureCU) return null;
       const needed = (targetCGPA * (totalCU + futureCU) - totalQP) / futureCU;
-      if (isNaN(needed)) return null;
+      if (isNaN(needed) || !isFinite(needed)) return null;
       return Math.round(needed * 100) / 100;
     }
+
+
+    // ── Max reachable CGPA ───────────────────────────────────────────────────
 
     function maxReachableCGPA(futureSems, cuPerSem = 18) {
       if (!totalCU) return null;
@@ -158,39 +149,52 @@ export function useChat({
       return Math.round(((totalQP + scaleMax * futCU) / (totalCU + futCU)) * 100) / 100;
     }
 
-    const hasData = totalCU > 0;
 
-    const toFirst18  = hasData ? reqGPAat(firstMin, 18) : null;
-    const toUpper18  = hasData ? reqGPAat(upperMin, 18) : null;
-    const toLower18  = hasData ? reqGPAat(lowerMin, 18) : null;
-    const maxIn2     = hasData ? maxReachableCGPA(2) : null;
-    const maxIn4     = hasData ? maxReachableCGPA(4) : null;
+    // ── Format required GPA for display in prompt ────────────────────────────
+    //
+    // CRITICAL: When the required GPA exceeds the scale maximum, the raw
+    // impossible number is NOT written into the prompt string.
+    // Groq cannot quote what it never sees.
 
     function fmtReq(val) {
-      if (val === null)        return "N/A (no data)";
-      if (val < 0)             return "Already achieved";
-      if (val > scaleMax)      return `Not achievable (would need ${val.toFixed(2)}, above ${scaleMax} max)`;
-      if (val > scaleMax * 0.90) return `${val.toFixed(2)} (very challenging)`;
-      if (val > scaleMax * 0.75) return `${val.toFixed(2)} (challenging but realistic)`;
-      return `${val.toFixed(2)} (achievable)`;
+      if (val === null)          return `N/A — no course data entered yet`;
+      if (val < 0)               return `Already achieved`;
+      if (val > scaleMax)        return `Not achievable in one semester — exceeds the ${scaleMax} scale maximum`;
+      if (val > scaleMax * 0.90) return `${val.toFixed(2)} — very challenging`;
+      if (val > scaleMax * 0.75) return `${val.toFixed(2)} — challenging but realistic`;
+      return `${val.toFixed(2)} — achievable`;
     }
 
-    // ── Student profile ────────────────────────────────────────────────────
 
-    const studentName = student?.name     || null;
-    const dept        = student?.department || null;
-    const level       = student?.level     || null;
+    // ── Pre-compute key figures ──────────────────────────────────────────────
 
-    // ── Assemble prompt ────────────────────────────────────────────────────
+    const hasData = totalCU > 0;
 
-    return `You are an academic advisor for Nigerian university students. Your job is to give direct, specific, personalised advice based on the student's real numbers below.
+    const toFirst18 = hasData ? reqGPAat(firstMin, 18) : null;
+    const toUpper18 = hasData ? reqGPAat(upperMin, 18) : null;
+    const toLower18 = hasData ? reqGPAat(lowerMin, 18) : null;
+    const maxIn2    = hasData ? maxReachableCGPA(2)     : null;
+    const maxIn4    = hasData ? maxReachableCGPA(4)     : null;
+    const maxIn6    = hasData ? maxReachableCGPA(6)     : null;
+
+
+    // ── Student profile ──────────────────────────────────────────────────────
+
+    const studentName = student?.name        || null;
+    const dept        = student?.department  || null;
+    const level       = student?.level       || null;
+
+
+    // ── Assemble prompt ──────────────────────────────────────────────────────
+
+    return `You are an academic advisor for Nigerian university students. Give direct, specific, personalised advice using the student's real numbers below.
 
 STUDENT PROFILE:
 ${studentName ? `Name: ${studentName}` : "Name: not provided"}
-${dept        ? `Department: ${dept}` : ""}
-${level       ? `Level: ${level}` : ""}
+${dept        ? `Department: ${dept}`  : ""}
+${level       ? `Level: ${level}`      : ""}
 University: ${inst?.name ?? "Not selected"}
-Grading scale: ${scaleMax} (maximum)
+Grading scale: ${scaleMax} point scale (this is the absolute maximum any GPA or CGPA can reach)
 Pass mark: ${passmark}%
 
 CURRENT PERFORMANCE:
@@ -204,29 +208,34 @@ Failed courses: ${failedCourses.length > 0 ? failedCourses.join(", ") : "None"}
 Borderline status: ${borderlineNote}
 
 CLASSIFICATION BOUNDARIES AT ${inst?.name ?? "THIS UNIVERSITY"}:
-First Class:         ${firstMin}+
-Second Upper (2:1):  ${upperMin}+
-Second Lower (2:2):  ${lowerMin}+
-Third Class:         ${thirdMin}+
+First Class:        ${firstMin} and above
+Second Upper (2:1): ${upperMin} and above
+Second Lower (2:2): ${lowerMin} and above
+Third Class:        ${thirdMin} and above
+Scale maximum:      ${scaleMax} (no GPA or CGPA can exceed this number)
 
-${hasData ? `REQUIRED GPA FIGURES (assuming 18 credit units next semester):
+${hasData ? `REQUIRED GPA NEXT SEMESTER (assuming 18 credit units — most common load):
 To reach First Class (${firstMin}):  ${fmtReq(toFirst18)}
 To reach 2:1 (${upperMin}):          ${fmtReq(toUpper18)}
 To reach 2:2 (${lowerMin}):          ${fmtReq(toLower18)}
-Max CGPA achievable (2 perfect sems): ${maxIn2 ?? "N/A"}
-Max CGPA achievable (4 perfect sems): ${maxIn4 ?? "N/A"}` : "No course data entered yet."}
+
+MAXIMUM CGPA STILL REACHABLE (scoring ${scaleMax}.00 every remaining semester at 18 CU):
+After 2 more perfect semesters: ${maxIn2 ?? "N/A"}
+After 4 more perfect semesters: ${maxIn4 ?? "N/A"}
+After 6 more perfect semesters: ${maxIn6 ?? "N/A"}` : "No course data entered yet — ask the student to add their courses first."}
 
 HOW TO RESPOND:
-- Answer exactly what was asked. Do not dump all the above data into every response.
-- If they ask "what GPA do I need", give the single most relevant figure (18 CU default), state clearly if it's achievable or not, and move on.
-- If they ask "how close am I", lead with the gap in CGPA points, what it means practically, and what it takes to close it — not a list of required GPAs for different credit loads.
-- If a required GPA is above ${scaleMax}, clearly say it is not achievable in one semester, then tell them the maximum CGPA they CAN reach (use the figures above).
+- Answer exactly what was asked. Do not dump all figures into every response.
+- If they ask what GPA they need, give the single most relevant figure (18 CU default). State clearly if it is achievable or not, then move on.
+- If they ask how close they are, lead with the gap in CGPA points and what it means — not a list of required GPAs.
+- SCALE RULE: No GPA or CGPA can ever exceed ${scaleMax} at this university. If a required GPA shows "Not achievable in one semester", never invent or mention any number above ${scaleMax}. Instead, immediately pivot: tell the student the maximum CGPA they can still reach (use the figures above) and how many strong semesters that requires.
+- Never open with filler phrases like "You're looking for a specific answer", "Great question", "That's a good question", or any sentence that restates what the student just asked. Start directly with the answer or the key number.
 - Keep responses under 150 words unless the student asks for a detailed breakdown.
 - Vary your phrasing — do not start every response the same way.
 - Be direct and warm, like a knowledgeable senior who genuinely wants them to succeed.
-- If the student has no data, ask them to enter their courses before you can give specific numbers.
-- Do not list scenarios for 15 CU, 18 CU, and 20 CU in the same response unless specifically asked.
-- Never say "em-dash" or use em-dashes. Use commas, colons, or periods instead.`;
+- If the student has no data yet, ask them to enter their courses before you can give specific numbers.
+- Do not list scenarios for 15 CU, 18 CU, and 20 CU in the same response unless the student specifically asks about different credit loads.
+- Never use em-dashes. Use commas, colons, or periods instead.`;
 
   }, [
     institution, student, semesters, cgpa, degreeClass,
@@ -252,17 +261,10 @@ HOW TO RESPOND:
 
 
   // ── Call /api/chat ─────────────────────────────────────────────────────────
-  //
-  // Sends the system prompt (built here) plus full conversation history.
-  // The Vercel function should accept { systemPrompt, messages } and
-  // forward them to Groq exactly. See comment block below for the
-  // required /api/chat.js shape.
 
   const callGroq = useCallback(async (userMessage) => {
     const systemPrompt = buildSystemPrompt();
 
-    // Trim history to last MAX_API_HISTORY_TURNS turns to control token usage.
-    // Each "turn" is one user message + one assistant message = 2 entries.
     const trimmedHistory = apiHistoryRef.current.slice(-(MAX_API_HISTORY_TURNS * 2));
 
     const messagesForAPI = [
@@ -308,7 +310,6 @@ HOW TO RESPOND:
     const trimmed = userMessage?.trim();
     if (!trimmed || isLoading) return;
 
-    // Add user message to displayed history
     const userMsg = {
       id:                  generateId("msg"),
       role:                "user",
@@ -326,15 +327,13 @@ HOW TO RESPOND:
     let matchedTopic        = null;
 
     try {
-      // Primary: Groq via Vercel function
       responseContent = await callGroq(trimmed);
       setIsAPIOnline(true);
 
-      // Update API history on success so the next message has context
       apiHistoryRef.current = [
         ...apiHistoryRef.current,
-        { role: "user",      content: trimmed          },
-        { role: "assistant", content: responseContent  },
+        { role: "user",      content: trimmed         },
+        { role: "assistant", content: responseContent },
       ];
 
     } catch (err) {
@@ -346,7 +345,6 @@ HOW TO RESPOND:
       responseContent     = fallback.content;
       matchedTopic        = fallback.topic;
       isFromKnowledgeBase = true;
-      // Do not append KB responses to API history — they are not from the model
     }
 
     setTimeout(() => {
@@ -382,11 +380,11 @@ HOW TO RESPOND:
     setMessages([]);
     setIsLoading(false);
     setPendingRetry(null);
-    apiHistoryRef.current = []; // also clear the API history
+    apiHistoryRef.current = [];
   }, []);
 
 
-  // ── Dismiss error message ──────────────────────────────────────────────────
+  // ── Dismiss error ──────────────────────────────────────────────────────────
 
   const dismissError = useCallback((messageId) => {
     setMessages(prev => prev.filter(m => m.id !== messageId));
@@ -408,47 +406,3 @@ HOW TO RESPOND:
     suggestedChips: SUGGESTED_CHIPS,
   };
 }
-
-
-// ── REQUIRED /api/chat.js SHAPE ────────────────────────────────────────────────
-//
-// Your Vercel serverless function must now accept:
-//   req.body = { systemPrompt: string, messages: Array<{role, content}> }
-//
-// Minimal working version:
-//
-//   import Groq from "groq-sdk";
-//
-//   const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-//
-//   export default async function handler(req, res) {
-//     if (req.method !== "POST") return res.status(405).end();
-//
-//     const { systemPrompt, messages } = req.body;
-//     if (!systemPrompt || !Array.isArray(messages)) {
-//       return res.status(400).json({ error: "Missing systemPrompt or messages" });
-//     }
-//
-//     try {
-//       const completion = await groq.chat.completions.create({
-//         model:       "llama-3.3-70b-versatile",   // or your current model
-//         max_tokens:  600,
-//         temperature: 0.7,                          // IMPORTANT: not 0
-//         messages: [
-//           { role: "system", content: systemPrompt },
-//           ...messages,
-//         ],
-//       });
-//
-//       const content = completion.choices[0]?.message?.content ?? "";
-//       return res.status(200).json({ content });
-//
-//     } catch (err) {
-//       console.error("[NG CGPA /api/chat]", err);
-//       return res.status(500).json({ error: "Groq request failed" });
-//     }
-//   }
-//
-// If you share your current /api/chat.js I will rewrite it completely
-// to match this shape and fix any other issues in it.
-// ──────────────────────────────────────────────────────────────────────────────
