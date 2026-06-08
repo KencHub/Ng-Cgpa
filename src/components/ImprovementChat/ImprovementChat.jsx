@@ -1,15 +1,16 @@
 // ── ImprovementChat.jsx ───────────────────────────────────────────────────────
 // Collapsible AI-powered academic advisor chat panel.
 //
-// Renders the full chat interface: status bar, scrollable history,
-// fallback notice, suggested prompt chips, and text input.
-//
-// SuggestedChips and FallbackNotice are imported from Batch 23.
-// ImprovementChat.css is also from Batch 23.
+// Changes from previous version:
+//   - X (clear) button removed from header entirely.
+//     Header now owns one action only: collapse/expand.
+//   - StatusDot added to header. Green = AI online. Amber = Knowledge Base.
+//   - "Clear conversation" button lives inside the chat body, above the
+//     message history. It only renders when messages exist.
+//     No conditional render in the header — no more disappearing button.
 //
 // Auto-scroll: scrolls to the bottom on new messages and when the panel
-// is first expanded. Does not scroll if the user has manually scrolled up
-// to read older messages (detects proximity to bottom before scrolling).
+// is first expanded. Does not scroll if the user has manually scrolled up.
 
 
 import React, {
@@ -24,8 +25,8 @@ import "./ImprovementChat.css";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const SCROLL_THRESHOLD = 80; // px from bottom — within this, auto-scroll fires
-const TEXTAREA_MAX_H   = 120; // px
+const SCROLL_THRESHOLD = 80;   // px from bottom — within this, auto-scroll fires
+const TEXTAREA_MAX_H   = 120;  // px
 
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -44,20 +45,19 @@ export default function ImprovementChat({
   institution,
   cgpa,
 }) {
-  const [expanded,    setExpanded]    = useState(false);
-  const [inputValue,  setInputValue]  = useState("");
+  const [expanded,   setExpanded]   = useState(false);
+  const [inputValue, setInputValue] = useState("");
 
   const textareaRef  = useRef(null);
   const historyRef   = useRef(null);
   const bottomRef    = useRef(null);
-  const userScrolled = useRef(false); // true when user has manually scrolled up
+  const userScrolled = useRef(false);
 
   const hasMessages = messages.length > 0;
 
 
   // ── Auto-scroll ─────────────────────────────────────────────────────────────
 
-  // Track whether user has scrolled away from the bottom
   useEffect(() => {
     const el = historyRef.current;
     if (!el) return;
@@ -71,14 +71,12 @@ export default function ImprovementChat({
     return () => el.removeEventListener("scroll", handleScroll);
   }, [expanded]);
 
-  // Scroll to bottom when new messages arrive (if user hasn't scrolled up)
   useEffect(() => {
     if (!expanded) return;
     if (userScrolled.current) return;
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages, isLoading, expanded]);
 
-  // Instant scroll to bottom when panel first expands
   useEffect(() => {
     if (!expanded) return;
     const timer = setTimeout(() => {
@@ -89,7 +87,7 @@ export default function ImprovementChat({
   }, [expanded]);
 
 
-  // ── Send message ─────────────────────────────────────────────────────────────
+  // ── Send message ──────────────────────────────────────────────────────────
 
   const handleSend = useCallback(() => {
     const text = inputValue.trim();
@@ -130,14 +128,6 @@ export default function ImprovementChat({
   }
 
 
-  // ── Clear (stop propagation so it doesn't toggle collapse) ───────────────
-
-  function handleClear(e) {
-    e.stopPropagation();
-    onClear();
-  }
-
-
   // ── Toggle collapse ───────────────────────────────────────────────────────
 
   function handleToggle() {
@@ -158,6 +148,7 @@ export default function ImprovementChat({
     <div className="improvement-chat panel-card">
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
+      {/* One job only: collapse and expand. No content actions live here.    */}
       <div
         className="collapsible-header chat-header"
         role="button"
@@ -167,29 +158,27 @@ export default function ImprovementChat({
         onClick={handleToggle}
         onKeyDown={handleHeaderKeyDown}
       >
-            <div className="chat-header__left">
+        <div className="chat-header__left">
           <span className="collapsible-header__title">Academic Assistant</span>
+          <StatusDot isAPIOnline={isAPIOnline} />
+          <span className="chat-status-label">
+            {isAPIOnline ? "AI Online" : "Knowledge Base"}
+          </span>
         </div>
 
         <div className="chat-header__right">
-          {hasMessages && (
-            <button
-              className="btn-icon chat-header__clear"
-              onClick={handleClear}
-              title="Clear conversation"
-              aria-label="Clear conversation history"
-              type="button"
-            >
-              <IconClear />
-            </button>
-          )}
           <svg
             className={`collapsible-chevron${expanded ? " collapsible-chevron--open" : ""}`}
             width="16" height="16" viewBox="0 0 16 16"
             fill="none" aria-hidden="true"
           >
-            <path d="M4 6l4 4 4-4" stroke="currentColor"
-              strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            <path
+              d="M4 6l4 4 4-4"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
           </svg>
         </div>
       </div>
@@ -198,6 +187,22 @@ export default function ImprovementChat({
       {/* ── Body ───────────────────────────────────────────────────────────── */}
       {expanded && (
         <div className="chat-body" id="chat-body">
+
+          {/* Clear conversation — inside the body, owns this action alone.    */}
+          {/* Rendered unconditionally by location. Visible only when needed. */}
+          {hasMessages && (
+            <div className="chat-clear-row">
+              <button
+                className="chat-clear-btn"
+                onClick={onClear}
+                type="button"
+                aria-label="Clear conversation history"
+              >
+                <IconClear />
+                Clear conversation
+              </button>
+            </div>
+          )}
 
           {/* Chat history */}
           <div
@@ -225,19 +230,18 @@ export default function ImprovementChat({
                   />
                 ))}
 
-                {/* Typing indicator */}
                 {isLoading && <TypingIndicator />}
 
-                {/* Scroll anchor */}
-                <div ref={bottomRef} className="chat-history__anchor" aria-hidden="true" />
+                <div
+                  ref={bottomRef}
+                  className="chat-history__anchor"
+                  aria-hidden="true"
+                />
               </>
             )}
           </div>
 
-          
-          
-            {!isAPIOnline && <FallbackNotice />}
-          
+          {!isAPIOnline && <FallbackNotice />}
 
           {/* Suggested chips */}
           <SuggestedChips
@@ -279,7 +283,6 @@ export default function ImprovementChat({
             </button>
           </div>
 
-          {/* Character count — only when approaching limit */}
           {inputValue.length > 400 && (
             <p className="chat-char-count" aria-live="polite">
               {inputValue.length} / 500
@@ -293,6 +296,30 @@ export default function ImprovementChat({
   );
 }
 
+
+// ── Status dot ────────────────────────────────────────────────────────────────
+// Green when Groq API is responding. Amber when knowledge base is active.
+// Always rendered in the header — no conditional mount, no disappearing.
+
+function StatusDot({ isAPIOnline }) {
+  const cls   = isAPIOnline ? "api-status-dot--online" : "api-status-dot--kb";
+  const label = isAPIOnline
+    ? "AI Assistant is online"
+    : "AI unavailable — knowledge base is active";
+
+  return (
+    <div
+      className={`api-status-dot ${cls}`}
+      title={label}
+      aria-label={label}
+      role="img"
+    >
+      {isAPIOnline && (
+        <span className="api-status-dot__ring" aria-hidden="true" />
+      )}
+    </div>
+  );
+}
 
 
 // ── Typing indicator ──────────────────────────────────────────────────────────
@@ -350,20 +377,24 @@ function IconSend() {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16"
       fill="none" aria-hidden="true" focusable="false">
-      <path d="M14 8L2 2l3 6-3 6 12-6z"
+      <path
+        d="M14 8L2 2l3 6-3 6 12-6z"
         stroke="currentColor" strokeWidth="1.5"
-        strokeLinecap="round" strokeLinejoin="round" />
+        strokeLinecap="round" strokeLinejoin="round"
+      />
     </svg>
   );
 }
 
 function IconClear() {
   return (
-    <svg width="14" height="14" viewBox="0 0 14 14"
+    <svg width="12" height="12" viewBox="0 0 14 14"
       fill="none" aria-hidden="true" focusable="false">
-      <path d="M2 2l10 10M12 2L2 12"
+      <path
+        d="M2 2l10 10M12 2L2 12"
         stroke="currentColor" strokeWidth="1.5"
-        strokeLinecap="round" />
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
@@ -373,10 +404,12 @@ function IconSpinner() {
     <svg width="16" height="16" viewBox="0 0 16 16"
       fill="none" aria-hidden="true" focusable="false"
       className="chat-send-btn__spinner">
-      <circle cx="8" cy="8" r="6"
+      <circle
+        cx="8" cy="8" r="6"
         stroke="currentColor" strokeWidth="1.5"
         strokeDasharray="28" strokeDashoffset="10"
-        strokeLinecap="round" />
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
@@ -386,14 +419,17 @@ function IconAssistant() {
     <svg width="32" height="32" viewBox="0 0 32 32"
       fill="none" aria-hidden="true" focusable="false">
       <rect width="32" height="32" rx="8" fill="var(--color-surface-3)" />
-      <path d="M5 22 L16 13 L27 22"
+      <path
+        d="M5 22 L16 13 L27 22"
         stroke="var(--color-text-muted)" strokeWidth="2"
-        strokeLinecap="round" strokeLinejoin="round" />
+        strokeLinecap="round" strokeLinejoin="round"
+      />
       <rect x="10" y="22" width="12" height="7" rx="1.5"
         fill="var(--color-text-muted)" opacity="0.4" />
       <rect x="14.5" y="10" width="3" height="3.5" rx="1.5"
         fill="var(--color-text-muted)" opacity="0.6" />
-      <circle cx="16" cy="9" r="2" fill="var(--color-text-muted)" opacity="0.5" />
+      <circle cx="16" cy="9" r="2"
+        fill="var(--color-text-muted)" opacity="0.5" />
     </svg>
   );
 }
