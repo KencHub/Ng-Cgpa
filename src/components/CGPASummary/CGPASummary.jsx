@@ -3,10 +3,12 @@
 //
 // Added: What-if CGPA section — shown when whatIfMode is active
 // and at least one course has a what-if grade selected.
+// Added: WES International Conversion trigger
 
 import React, { useMemo } from "react";
 import ClassBadge      from "./ClassBadge.jsx";
 import CGPAProgressBar from "./CGPAProgressBar.jsx";
+import WESConverter    from "./WESConverter.jsx";
 import { ScaleBadge }  from "../InstitutionSelector/InstitutionSelector.jsx";
 import { getClassification } from "../../utils/calculator.js";
 import "./CGPASummary.css";
@@ -48,6 +50,8 @@ export default function CGPASummary({
   scaleMax,
   institution,
   semesterSummaries,
+  useUILegacyScale,
+  semesters,
   // What-if props
   whatIfCGPA,
   whatIfMode,
@@ -240,6 +244,16 @@ export default function CGPASummary({
           {semesterSummaries && semesterSummaries.length > 1 && (
             <GPATrend summaries={semesterSummaries} scaleMax={scaleMax} />
           )}
+
+          {/* WES International Conversion */}
+          <WESConverter
+            cgpa={cgpa}
+            degreeClassEntry={degreeClassEntry}
+            institution={institution}
+            useUILegacyScale={useUILegacyScale}
+            semesterCount={semesterCount}
+            semesters={semesters}
+          />
 
         </div>
       )}

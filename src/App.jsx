@@ -326,9 +326,11 @@ export default function App() {
             scaleMax={cgpa.activeScale}
             institution={cgpa.institution}
             semesterSummaries={cgpa.semesterSummaries}
+            useUILegacyScale={cgpa.useUILegacyScale}
             whatIfCGPA={whatIfCGPA}
             whatIfMode={whatIfMode}
             activeClassifications={cgpa.activeClassifications}
+            semesters={cgpa.semesters}
           />
 
           <ProjectionPanel
