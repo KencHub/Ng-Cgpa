@@ -438,7 +438,7 @@ function buildCourseDetailPages(doc, { semesters }) {
       margin:  { left: MARGIN.left, right: MARGIN.right },
       ...TABLE_STYLE.courseDetail,
       columnStyles: {
-        0: { cellWidth: 55 },
+        0: { cellWidth: 75 },
         1: { cellWidth: 13, halign: "right" },
         2: { cellWidth: 17, halign: "right" },
         3: { cellWidth: 16, halign: "center" },

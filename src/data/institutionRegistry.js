@@ -54,6 +54,7 @@ const CLASSIFICATIONS_7 = [
   { min: 2.40, max: 3.49, label: "Second Class Honours Lower Division",         short: "2:2"          },
   { min: 1.50, max: 2.39, label: "Third Class Honours",                         short: "Third Class"  },
   { min: 1.00, max: 1.49, label: "Pass",                                        short: "Pass"         },
+  { min: 0.00, max: 0.99, label: "No Degree Awarded", short: "Fail" },
 ];
 
 // Exported so the UI component can access it directly when the toggle fires
