@@ -98,20 +98,27 @@
   }
 
   .footer__right {
-    width: 100%;
     justify-content: center;
   }
 }
 
-@media (max-width: 479px) {
-  .footer__separator {
-    display: none;
-  }
 
-  .footer__brand,
-  .footer__right {
-    flex-direction: column;
-    align-items: center;
-    gap: var(--space-1);
-  }
+/* ── Contact button ──────────────────────────────────────────────────────────── */
+
+.footer__contact-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: var(--font-size-sm);
+  font-family: inherit;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color var(--transition-fast);
+}
+
+.footer__contact-btn:hover {
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }

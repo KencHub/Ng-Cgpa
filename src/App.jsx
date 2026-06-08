@@ -3,6 +3,7 @@
 //   - What-if Course Editor state and handlers
 //   - Carryover Priority Ranker in right panel
 //   - WhatsApp share handler
+//   - Contact modal state and handler (v2.2)
 
 import React, { useMemo, useState } from "react";
 
@@ -37,6 +38,7 @@ import CarryoverRanker    from "./components/CarryoverRanker/CarryoverRanker.jsx
 import InstitutionModal   from "./components/Modals/InstitutionModal.jsx";
 import ImportModal        from "./components/Modals/ImportModal.jsx";
 import ClearConfirmDialog from "./components/Modals/ClearConfirmDialog.jsx";
+import ContactModal       from "./components/Modals/ContactModal.jsx";
 import HelpCenter         from "./components/HelpCenter/HelpCenter.jsx";
 
 import "./App.css";
@@ -45,13 +47,15 @@ import "./App.css";
 export default function App() {
 
   // ── Hooks ───────────────────────────────────────────────────────────────────
-  const cgpa = useCGPA();
+  const cgpa        = useCGPA();
   const persistence = usePersistence(cgpa);
 
-  const [infoModalOpen, setInfoModalOpen] = useState(false);
+  // ── Modal state ──────────────────────────────────────────────────────────────
+  const [infoModalOpen,    setInfoModalOpen]    = useState(false);
+  const [contactModalOpen, setContactModalOpen] = useState(false);
+  const [contactContext,   setContactContext]   = useState(null);
 
   // ── What-if state ────────────────────────────────────────────────────────────
-  // whatIfGrades: { courseId: gradeLetter }
   const [whatIfMode,   setWhatIfMode]   = useState(false);
   const [whatIfGrades, setWhatIfGrades] = useState({});
 
@@ -97,11 +101,23 @@ export default function App() {
   );
 
 
+  // ── Contact handler ─────────────────────────────────────────────────────────
+
+  function handleOpenContact(context = null) {
+    setContactContext(context);
+    setContactModalOpen(true);
+  }
+
+  function handleCloseContact() {
+    setContactModalOpen(false);
+    setContactContext(null);
+  }
+
+
   // ── What-if handlers ────────────────────────────────────────────────────────
 
   function handleToggleWhatIf() {
     if (whatIfMode) {
-      // Exiting: clear all what-if grades
       setWhatIfGrades({});
     }
     setWhatIfMode((prev) => !prev);
@@ -110,7 +126,6 @@ export default function App() {
   function handleWhatIfGradeChange(courseId, gradeLetter) {
     setWhatIfGrades((prev) => {
       if (!gradeLetter) {
-        // Remove override for this course
         const next = { ...prev };
         delete next[courseId];
         return next;
@@ -365,7 +380,7 @@ export default function App() {
       />
 
 
-      <Footer />
+      <Footer onOpenContact={() => handleOpenContact(null)} />
 
 
       {/* ── Modals ─────────────────────────────────────────────────────────── */}
@@ -390,6 +405,7 @@ export default function App() {
           onSelect={null}
           onToggleLegacy={cgpa.toggleUILegacyScale}
           onClose={() => setInfoModalOpen(false)}
+          onOpenContact={handleOpenContact}
           infoOnly
         />
       )}
@@ -420,6 +436,13 @@ export default function App() {
 
       {cgpa.ui.helpCenterOpen && (
         <HelpCenter onClose={() => cgpa.closeModal("helpCenterOpen")} />
+      )}
+
+      {contactModalOpen && (
+        <ContactModal
+          context={contactContext}
+          onClose={handleCloseContact}
+        />
       )}
 
     </div>

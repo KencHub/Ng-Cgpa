@@ -1,14 +1,12 @@
 // ── Footer.jsx ────────────────────────────────────────────────────────────────
-// Application footer. Minimal — brand identity + attribution.
-// Sits at the bottom of the main app layout on all screen sizes.
-// On mobile, the sticky CGPA bar sits above this footer.
-
+// Application footer. Brand identity, attribution, and contact link.
+// The Contact button opens the ContactModal without navigating away.
 
 import React from "react";
 import "./Footer.css";
 
 
-export default function Footer() {
+export default function Footer({ onOpenContact }) {
   const year = new Date().getFullYear();
 
   return (
@@ -26,7 +24,7 @@ export default function Footer() {
           </span>
         </div>
 
-        {/* Attribution */}
+        {/* Attribution + contact */}
         <div className="footer__right">
           <span className="footer__built">
             Built by{" "}
@@ -36,6 +34,15 @@ export default function Footer() {
           <span className="footer__year" aria-label={`Copyright ${year}`}>
             &copy; {year}
           </span>
+          <span className="footer__separator" aria-hidden="true">·</span>
+          <button
+            className="footer__contact-btn"
+            onClick={onOpenContact}
+            type="button"
+            aria-label="Contact Nonso — report errors, suggest corrections, or get support"
+          >
+            Contact
+          </button>
         </div>
 
       </div>

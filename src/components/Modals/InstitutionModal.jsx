@@ -13,12 +13,13 @@
 //
 // Fix notes (v2.1):
 //   — Replaced <details>/<summary> with React useState toggles.
-//     Android Chrome renders native ► markers even with display:flex + list-style:none.
 //   — Wrapped IconExternal in a <span> so both flex children are spans.
-//     Bare SVG elements can be forced to display:block by some Android resets.
 //   — class-table__info uses display:block + display:block on label.
-//     flex-direction:column was not applying reliably.
 //   — NUC note uses a custom circle-i span instead of the ℹ codepoint.
+//
+// v2.2:
+//   — Added onOpenContact prop.
+//   — Added "Spotted an error?" report link at the bottom of infoOnly panel.
 
 
 import React, { useState, useEffect, useMemo } from "react";
@@ -41,6 +42,7 @@ export default function InstitutionModal({
   onSelect,
   onToggleLegacy,
   onClose,
+  onOpenContact = null,
   infoOnly = false,
 }) {
   const [query,      setQuery]      = useState("");
@@ -70,7 +72,6 @@ export default function InstitutionModal({
   function handleFocus(inst) {
     setFocused(inst);
     setQuery("");
-    // Reset sections when a different school is previewed
     setGradeOpen(false);
     setClassOpen(true);
   }
@@ -193,11 +194,9 @@ export default function InstitutionModal({
             </div>
           )}
 
-          {/* Institution details panel.
-    Only rendered in infoOnly mode.
-    In infoOnly mode: the whole body is just this panel. */}
+          {/* Institution details panel — infoOnly mode only */}
           {infoOnly && focused && (
-  <div className="institution-modal__details">
+            <div className="institution-modal__details">
 
               {/* ── Detail header: logo + name + tags ─────────────────── */}
               <div className="inst-detail__header">
@@ -226,9 +225,6 @@ export default function InstitutionModal({
               </div>
 
               {/* ── Website link ──────────────────────────────────────── */}
-              {/* IconExternal is wrapped in a <span> so both flex children
-                  are span elements. Bare SVG in a flex container can be
-                  forced to display:block on Android Chrome, breaking the row. */}
               {websiteHref && (
                 <a
                   href={websiteHref}
@@ -263,8 +259,6 @@ export default function InstitutionModal({
               )}
 
               {/* ── NUC 5.0 note ──────────────────────────────────────── */}
-              {/* Uses a custom circle-i span. The ℹ Unicode codepoint
-                  renders as a bare "i" on many Android fonts. */}
               {focused.scaleGroup === "NUC_5" && (
                 <div className="inst-detail__nuc-note">
                   <span className="inst-detail__nuc-icon" aria-hidden="true">i</span>
@@ -276,10 +270,7 @@ export default function InstitutionModal({
                 </div>
               )}
 
-              {/* ── Grade table — React-controlled collapsible ─────────── */}
-              {/* Using a <button> toggle instead of <details>/<summary>.
-                  Android Chrome shows its native ► marker on <summary> even
-                  with display:flex + list-style:none + ::marker suppression. */}
+              {/* ── Grade table ───────────────────────────────────────── */}
               <div className="inst-detail__section">
                 <button
                   type="button"
@@ -305,7 +296,7 @@ export default function InstitutionModal({
                 )}
               </div>
 
-              {/* ── Degree classifications — open by default ──────────── */}
+              {/* ── Degree classifications ────────────────────────────── */}
               <div className="inst-detail__section">
                 <button
                   type="button"
@@ -335,6 +326,17 @@ export default function InstitutionModal({
               {/* ── Notes ─────────────────────────────────────────────── */}
               {focused.notes && (
                 <p className="inst-detail__notes">{focused.notes}</p>
+              )}
+
+              {/* ── Report error link ─────────────────────────────────── */}
+              {onOpenContact && (
+                <button
+                  type="button"
+                  className="inst-detail__report-btn"
+                  onClick={() => onOpenContact({ institutionName: focused.name })}
+                >
+                  Spotted an error in this data? Let me know.
+                </button>
               )}
 
             </div>
@@ -432,10 +434,6 @@ function GradeTableDisplay({ gradeTable }) {
 
 
 // ── Classification table display ──────────────────────────────────────────────
-// label renders as display:block so it always occupies its own line.
-// short renders as display:inline-block with margin-top below it.
-// This is more reliable than flex-direction:column which can fail to apply
-// in certain cascade contexts on Android Chrome.
 
 function ClassificationTableDisplay({ classifications }) {
   if (!Array.isArray(classifications) || classifications.length === 0) {
