@@ -467,11 +467,13 @@ ol {
   flex-direction: column;
   overflow: hidden;
   animation: slideUp var(--transition-base) ease;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
 }
 
 @keyframes slideUp {
-  from { opacity: 0; transform: translate(-50%, calc(-50% + 16px)); }
-  to   { opacity: 1; transform: translate(-50%, -50%); }
+  from { transform: translate(-50%, calc(-50% + 16px)); }
+  to   { transform: translate(-50%, -50%); }
 }
 
 .modal__header {
