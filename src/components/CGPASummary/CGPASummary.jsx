@@ -214,11 +214,11 @@ export default function CGPASummary({
           {/* Quick stats */}
           <div className="cgpa-summary__stats">
             <QuickStat
-              label="Credit Units"
-              value={totals.totalCU}
-              icon={<IconCU />}
-              title="Total credit units attempted across all semesters"
-            />
+  label="Credit Units"
+  value={totals.registeredCU ?? totals.totalCU}
+  icon={<IconCU />}
+  title="Total credit units registered across all semesters"
+/>
             <QuickStat
               label="Quality Points"
               value={(Math.round(totals.totalQP * 100) / 100).toFixed(2)}

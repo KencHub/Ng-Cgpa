@@ -2,6 +2,9 @@
 // Changed: What-if GPA removed from SemesterHeader.
 // Changed: whatIfSemesterGPA and gpa passed to CourseTable instead,
 //          where the bar shows them inline beside the toggle button.
+// Fixed: registeredCU (all courses with valid CU) separated from totalCU
+//        (graded courses only) so the summary bar and warnings use the
+//        correct full count, while GPA arithmetic is unaffected.
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import CourseTable        from "./CourseTable.jsx";
@@ -70,14 +73,18 @@ export default function SemesterPanel({
   onWhatIfToggle,
   onWhatIfGradeChange,
 }) {
-  const { totalCU, totalQP, gpa } = useMemo(
+  // registeredCU: all courses with valid CU > 0 — used for display and warnings.
+  // totalCU: graded courses only — used for GPA arithmetic inside the bar.
+  const { totalCU, totalQP, gpa, registeredCU } = useMemo(
     () => computeSemesterSummary(semester, activeGradeTable),
     [semester, activeGradeTable]
   );
 
+  // Warnings check against registeredCU so ungraded high-unit courses
+  // are correctly caught by the "too high / too low" guards.
   const warnings = useMemo(
-    () => getSemesterWarnings(semester.courses, totalCU),
-    [semester.courses, totalCU]
+    () => getSemesterWarnings(semester.courses, registeredCU),
+    [semester.courses, registeredCU]
   );
 
   const whatIfSemesterGPA = useMemo(() => {
@@ -134,6 +141,7 @@ export default function SemesterPanel({
 
           <SemesterSummaryBar
             totalCU={totalCU}
+            registeredCU={registeredCU}
             totalQP={totalQP}
             gpa={gpa}
             courseCount={semester.courses.length}
@@ -341,16 +349,16 @@ function WarningBanner({ type, message }) {
 
 // ── Semester validation ───────────────────────────────────────────────────────
 
-function getSemesterWarnings(courses, totalCU) {
+function getSemesterWarnings(courses, registeredCU) {
   if (!Array.isArray(courses) || courses.length === 0) return [];
   const warnings = [];
-  if (totalCU > 30) {
+  if (registeredCU > 30) {
     warnings.push({
       id: "cu-high", type: "warning",
-      message: `This semester has ${totalCU} credit units. Most semesters carry 15 to 24 units. Check your entries.`,
+      message: `This semester has ${registeredCU} credit units. Most semesters carry 15 to 24 units. Check your entries.`,
     });
   }
-  if (totalCU < 6 && courses.length > 0) {
+  if (registeredCU < 6 && courses.length > 0) {
     warnings.push({
       id: "cu-low", type: "warning",
       message: "This semester total seems low. Verify your credit units.",

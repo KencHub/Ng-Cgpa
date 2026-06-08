@@ -2,23 +2,29 @@
 // Sticky footer bar at the bottom of each semester panel.
 // Shows total credit units, total quality points, and the semester GPA.
 //
+// registeredCU: all courses with valid CU > 0, used for display.
+// totalCU: graded courses only, used for GPA arithmetic (not shown here).
+//
 // CSS lives in SemesterPanel.css (already built in Batch 17).
 // This component has no CSS import of its own.
 
-
 import React from "react";
-
 
 export default function SemesterSummaryBar({
   totalCU,
+  registeredCU,
   totalQP,
   gpa,
   courseCount,
   institution,
 }) {
-  const hasData    = courseCount > 0;
-  const qpDisplay  = totalQP ? (Math.round(totalQP * 100) / 100).toFixed(2) : "0.00";
-  const scaleMax   = institution?.scale ?? 5.0;
+  const hasData   = courseCount > 0;
+  const qpDisplay = totalQP ? (Math.round(totalQP * 100) / 100).toFixed(2) : "0.00";
+  const scaleMax  = institution?.scale ?? 5.0;
+
+  // Display registeredCU (all courses with valid CU) for the credit unit total.
+  // Falls back to totalCU if registeredCU is not yet passed from the parent.
+  const displayCU = registeredCU ?? totalCU;
 
   return (
     <div
@@ -30,7 +36,7 @@ export default function SemesterSummaryBar({
       <div className="semester-summary-bar__stat">
         <span className="semester-summary-bar__label">Credit Units</span>
         <span className="semester-summary-bar__value">
-          {hasData ? totalCU : "—"}
+          {hasData ? displayCU : "—"}
         </span>
       </div>
 

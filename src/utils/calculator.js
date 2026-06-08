@@ -7,6 +7,10 @@
 //
 // It is NOT the average of semester GPAs. That formula is mathematically wrong
 // whenever credit unit loads differ between semesters. See computeCGPA below.
+//
+// registeredCU vs totalCU:
+//   registeredCU — all courses with valid CU > 0, graded or not. Used for display.
+//   totalCU      — graded courses only. Used as the GPA/CGPA denominator.
 
 
 // ── Score to Grade ────────────────────────────────────────────────────────────
@@ -98,8 +102,8 @@ export function computeQualityPoint(creditUnits, gradePoint) {
  * Computes the GPA for a single semester.
  *   semesterGPA = sum(qualityPoints) / sum(creditUnits)
  *
- * Returns null when there are no valid courses.
- * Courses with 0 credit units are excluded from this sum.
+ * Returns null when there are no valid graded courses.
+ * Ungraded courses and courses with 0 credit units are excluded from this sum.
  *
  * @param {Array} courses
  * @param {Array} gradeTable
@@ -146,7 +150,7 @@ export function computeSemesterGPA(courses, gradeTable) {
  *   CGPA = sum(all qualityPoints) / sum(all creditUnits)
  *
  * NOT the average of semester GPAs.
- * Courses with 0 credit units are excluded from both sums.
+ * Ungraded courses and courses with 0 credit units are excluded from both sums.
  *
  * @param {Array} semesters
  * @param {Array} gradeTable
@@ -192,18 +196,23 @@ export function computeCGPA(semesters, gradeTable) {
 // ── Running Totals ────────────────────────────────────────────────────────────
 
 /**
- * Returns total credit units and total quality points across all semesters.
- * Courses with 0 credit units are excluded.
+ * Returns total credit units, total quality points, and registered credit units
+ * across all semesters.
+ *
+ * totalCU      — graded courses only. Used as the CGPA denominator.
+ * totalQP      — quality points for graded courses only.
+ * registeredCU — all courses with valid CU > 0, graded or not. Used for display.
  *
  * @param {Array} semesters
  * @param {Array} gradeTable
- * @returns {{ totalCU: number, totalQP: number }}
+ * @returns {{ totalCU: number, totalQP: number, registeredCU: number }}
  */
 export function computeTotals(semesters, gradeTable) {
-  if (!Array.isArray(semesters)) return { totalCU: 0, totalQP: 0 };
+  if (!Array.isArray(semesters)) return { totalCU: 0, totalQP: 0, registeredCU: 0 };
 
-  let totalCU = 0;
-  let totalQP = 0;
+  let totalCU      = 0;
+  let totalQP      = 0;
+  let registeredCU = 0;
 
   for (const semester of semesters) {
     if (!Array.isArray(semester.courses)) continue;
@@ -211,6 +220,8 @@ export function computeTotals(semesters, gradeTable) {
     for (const course of semester.courses) {
       const cu = parseFloat(course.creditUnits);
       if (isNaN(cu) || cu <= 0) continue;
+
+      registeredCU += cu; // count all courses with a valid CU, graded or not
 
       let gp = null;
 
@@ -223,14 +234,14 @@ export function computeTotals(semesters, gradeTable) {
         gp = gradeLetterToPoint(course.grade, gradeTable);
       }
 
-      if (gp === null) continue;
+      if (gp === null) continue; // skip ungraded for arithmetic only
 
       totalQP += cu * gp;
       totalCU += cu;
     }
   }
 
-  return { totalCU, totalQP };
+  return { totalCU, totalQP, registeredCU };
 }
 
 
@@ -294,7 +305,7 @@ export function resolveCourse(course, gradeTable) {
     ) || null;
   }
 
-  const gradePoint = gradeEntry ? gradeEntry.point : null;
+  const gradePoint  = gradeEntry ? gradeEntry.point : null;
   const gradeLetter = gradeEntry ? gradeEntry.letter : (course.grade || null);
 
   // 0 CU courses get qualityPoint = 0, not null.
@@ -325,28 +336,38 @@ export function resolveCourse(course, gradeTable) {
 /**
  * Returns a summary object for a single semester.
  *
+ * totalCU      — graded courses only. Used as the GPA denominator.
+ * totalQP      — quality points for graded courses only.
+ * gpa          — semester GPA, or null if no graded courses.
+ * registeredCU — all courses with valid CU > 0. Used for the display total.
+ *
  * @param {Object} semester
  * @param {Array}  gradeTable
- * @returns {{ totalCU, totalQP, gpa }}
+ * @returns {{ totalCU, totalQP, gpa, registeredCU }}
  */
 export function computeSemesterSummary(semester, gradeTable) {
   if (!semester || !Array.isArray(semester.courses)) {
-    return { totalCU: 0, totalQP: 0, gpa: null };
+    return { totalCU: 0, totalQP: 0, gpa: null, registeredCU: 0 };
   }
 
-  let totalCU = 0;
-  let totalQP = 0;
+  let totalCU      = 0; // graded courses only — GPA denominator
+  let totalQP      = 0;
+  let registeredCU = 0; // all courses with valid CU — display total
 
   for (const course of semester.courses) {
     const resolved = resolveCourse(course, gradeTable);
     const cu = parseFloat(resolved.creditUnits);
-    if (isNaN(cu) || cu <= 0 || resolved.gradePoint === null) continue;
+    if (isNaN(cu) || cu <= 0) continue;
+
+    registeredCU += cu;                         // count regardless of grade
+
+    if (resolved.gradePoint === null) continue; // skip ungraded for GPA only
     totalCU += cu;
     totalQP += resolved.qualityPoint;
   }
 
   const gpa = totalCU > 0 ? round4(totalQP / totalCU) : null;
-  return { totalCU, totalQP, gpa };
+  return { totalCU, totalQP, gpa, registeredCU };
 }
 
 
@@ -382,16 +403,16 @@ export function computeCarryoverImpact(
     ? round4(currentTotalQP / currentTotalCU)
     : null;
 
-  const gainedQP = targetEntry.point * cu;
-  const newTotalQP = currentTotalQP + gainedQP;
+  const gainedQP      = targetEntry.point * cu;
+  const newTotalQP    = currentTotalQP + gainedQP;
   const projectedCGPA = round4(newTotalQP / currentTotalCU);
-  const delta = round4(projectedCGPA - (currentCGPA || 0));
+  const delta         = round4(projectedCGPA - (currentCGPA || 0));
 
   return {
     currentCGPA,
     projectedCGPA,
     delta,
-    targetGradePoint: targetEntry.point,
+    targetGradePoint:  targetEntry.point,
     targetGradeLetter: targetEntry.letter,
     creditUnits: cu,
   };
@@ -458,6 +479,7 @@ export function computeWhatIfCGPA(semesters, gradeTable, whatIfGrades) {
   if (totalCU === 0) return null;
   return round4(totalQP / totalCU);
 }
+
 
 // ── Validation Helpers ────────────────────────────────────────────────────────
 
