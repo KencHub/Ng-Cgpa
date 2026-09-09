@@ -24,6 +24,7 @@ import {
   importFromJSON,
 } from "./utils/exportJSON.js";
 import { computeWhatIfCGPA } from "./utils/calculator.js";
+import { convertToWES }     from "./utils/wesConverter.js";
 
 import Header             from "./components/Header/Header.jsx";
 import Footer             from "./components/Footer/Footer.jsx";
@@ -65,6 +66,21 @@ export default function App() {
     return computeWhatIfCGPA(cgpa.semesters, cgpa.activeGradeTable, whatIfGrades);
   }, [whatIfMode, whatIfGrades, cgpa.semesters, cgpa.activeGradeTable]);
 
+  // Headline WES conversion — same pure function WESConverter.jsx uses,
+  // called here so the chat can reference it without duplicating WES state.
+  // Per-course detail stays local to WESConverter.jsx; only the headline
+  // result (Canadian grade, US GPA, degree class match) reaches the chat.
+  const wesResult = useMemo(() => {
+    const semesterCount = cgpa.semesters.filter((s) => s.courses.length > 0).length;
+    return convertToWES({
+      cgpa:             cgpa.cgpa,
+      degreeClassEntry: cgpa.degreeClassEntry,
+      institution:      cgpa.institution,
+      useUILegacyScale: cgpa.useUILegacyScale,
+      semesterCount,
+    });
+  }, [cgpa.cgpa, cgpa.degreeClassEntry, cgpa.institution, cgpa.useUILegacyScale, cgpa.semesters]);
+
   const chat = useChat({
     institution:           cgpa.institution,
     student:               cgpa.student,
@@ -80,6 +96,7 @@ export default function App() {
     activePassmark:        cgpa.activePassmark,
     projection:            cgpa.projection,
     projectionResult:      cgpa.projectionResult,
+    wes:                   wesResult,
   });
 
 
@@ -574,4 +591,4 @@ function getClassColorVar(short) {
   if (s.includes("2:2") || s.includes("lower"))   return "var(--color-accent)";
   if (s.includes("third"))                        return "#F4C46A";
   return "rgba(255,255,255,0.80)";
-}
+  }
