@@ -210,18 +210,50 @@ function AssistantMessage({
 
 
 // ── Content renderer ──────────────────────────────────────────────────────────
+//
+// Renders a light, safe subset of markdown the AI is allowed to use:
+// **bold** for emphasis, and "- " line prefixes for bullet lists.
+// No dangerouslySetInnerHTML anywhere — bold segments and bullets are built
+// as real React elements from plain text, so there is no HTML-injection risk
+// even though the source text comes from model output.
+
+function renderInline(line) {
+  const parts = line.split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith("**") && part.endsWith("**") && part.length > 4) {
+      return <strong key={i}>{part.slice(2, -2)}</strong>;
+    }
+    return <React.Fragment key={i}>{part}</React.Fragment>;
+  });
+}
 
 function renderContent(text) {
   if (!text) return null;
   const paragraphs = text.split(/\n\n+/);
+
   return paragraphs.map((para, pIdx) => {
     const lines = para.split("\n");
+    const isList = lines.every((l) => l.trim().startsWith("- ") || l.trim() === "");
+
+    if (isList) {
+      const items = lines.filter((l) => l.trim().startsWith("- "));
+      return (
+        <ul key={pIdx} className="assistant-message__list">
+          {items.map((item, lIdx) => (
+            <li key={lIdx} className="assistant-message__list-item">
+              {renderInline(item.trim().replace(/^-\s+/, ""))}
+            </li>
+          ))}
+        </ul>
+      );
+    }
+
     return (
       <p key={pIdx} className="assistant-message__para">
         {lines.map((line, lIdx) => (
           <React.Fragment key={lIdx}>
             {lIdx > 0 && <br />}
-            {line}
+            {renderInline(line)}
           </React.Fragment>
         ))}
       </p>
