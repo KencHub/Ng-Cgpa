@@ -1303,7 +1303,45 @@ export const KNOWLEDGE_BASE = [
 
 
   // ════════════════════════════════════════════════════════════════════════════
-  // CATEGORY G — GETTING STARTED
+  // CATEGORY G — WES / INTERNATIONAL EQUIVALENCY
+  // ════════════════════════════════════════════════════════════════════════════
+
+  {
+    id: "wes-conversion-explained",
+    title: "What Is WES Conversion?",
+    weight: 3,
+    keywords: [
+      "what is wes", "wes conversion", "wes evaluation", "wes equivalency",
+      "world education services", "canadian equivalent", "us gpa equivalent",
+      "convert my cgpa", "international equivalency", "wes gpa",
+      "canadian grade equivalent", "wes meaning", "what does wes mean",
+      "how does wes work", "wes credential evaluation",
+    ],
+    generateResponse(ctx) {
+      const base = [
+        "WES (World Education Services) evaluates foreign academic credentials and converts them to Canadian and US grade equivalents, commonly required for immigration (Canada) and graduate school applications (US).",
+        "The conversion is based on your overall degree classification, not a direct formula on your raw CGPA. WES maps Nigerian classification bands (First Class, 2:1, 2:2, etc.) to specific Canadian letter grades and US 4.0 GPA equivalents.",
+      ];
+
+      if (ctx.wes?.supported) {
+        base.push(
+          `Your conversion: ${cgpaStr(ctx)} (${ctx.degreeClass}) → Canadian grade ${ctx.wes.canadianGrade}, US GPA ${ctx.wes.usGPA} (${ctx.wes.usGPANum} / 4.0).`
+        );
+        if (ctx.wes.warning) base.push(`Note: ${ctx.wes.warning}`);
+      } else if (ctx.wes?.reason) {
+        base.push(`Your conversion isn't available yet: ${ctx.wes.reason}`);
+      } else {
+        base.push("Open the WES Converter panel to see your specific conversion once your courses and institution are entered.");
+      }
+
+      base.push("This is a headline estimate for planning purposes, not an official WES document. Only WES itself can issue a certified evaluation report.");
+      return base.join("\n\n");
+    },
+  },
+
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // CATEGORY H — GETTING STARTED
   // ════════════════════════════════════════════════════════════════════════════
 
   {
@@ -1326,7 +1364,7 @@ export const KNOWLEDGE_BASE = [
 
       return [
         "Here is what you can ask me:",
-        "- Am I on track for a First Class?\n- What GPA do I need next semester?\n- I failed a course — how bad is it?\n- What class will I graduate with at this rate?\n- How do I move from a 2:2 to a 2:1?\n- What is the minimum to avoid Third Class?\n- Draft an academic appeal letter or HOD letter\n- Is First Class still possible for me?\n- What is CGPA, GPA, or a quality point?",
+        "- Am I on track for a First Class?\n- What GPA do I need next semester?\n- I failed a course — how bad is it?\n- What class will I graduate with at this rate?\n- How do I move from a 2:2 to a 2:1?\n- What is the minimum to avoid Third Class?\n- Draft an academic appeal letter or HOD letter\n- Is First Class still possible for me?\n- What is CGPA, GPA, or a quality point?\n- What is my WES / Canadian equivalency?",
         intro,
       ].join("\n\n");
     },
@@ -1337,14 +1375,44 @@ export const KNOWLEDGE_BASE = [
 
 
 // ── Suggested chips ────────────────────────────────────────────────────────────
+//
+// getSuggestedChips(ctx) replaces the old static SUGGESTED_CHIPS export.
+// It builds a pool of candidate chips, filters out any that don't apply to
+// the student's current state, then shuffles and returns a fixed-size set.
+// Called fresh each time useChat's dependencies change, so chips reshuffle
+// whenever the underlying data changes (and on every session/reload).
 
-export const SUGGESTED_CHIPS = [
-  "Am I on track for a First Class?",
-  "What GPA do I need next semester?",
-  "I failed a course. How bad is it?",
-  "What class will I graduate with at this rate?",
-  "How do I move from a 2:2 to a 2:1?",
-  "What is the minimum to avoid Third Class?",
-  "Draft an academic appeal letter",
-  "Is First Class still possible for me?",
+const CHIP_POOL = [
+  { text: "Am I on track for a First Class?",                 show: (ctx) => !ctx.isFirstClass },
+  { text: "What GPA do I need next semester?",                 show: () => true },
+  { text: "I failed a course. How bad is it?",                 show: (ctx) => ctx.failedCount > 0 },
+  { text: "What class will I graduate with at this rate?",     show: () => true },
+  { text: "How do I move from a 2:2 to a 2:1?",                 show: (ctx) => (ctx.degreeClass || "").toLowerCase().includes("2:2") || (ctx.degreeClass || "").toLowerCase().includes("lower") },
+  { text: "What is the minimum to avoid Third Class?",         show: (ctx) => !ctx.hasData || (ctx.degreeClass || "").toLowerCase().includes("third") || (ctx.degreeClass || "").toLowerCase().includes("2:2") },
+  { text: "Draft an academic appeal letter",                   show: () => true },
+  { text: "Is First Class still possible for me?",             show: (ctx) => !ctx.isFirstClass },
+  { text: "How do I stay in First Class?",                     show: (ctx) => ctx.isFirstClass },
+  { text: "What is my WES / Canadian equivalency?",            show: (ctx) => ctx.hasWES },
+  { text: "Convert my CGPA to WES",                             show: (ctx) => ctx.hasData && !ctx.hasWES },
+  { text: "How does retaking a failed course work?",           show: (ctx) => ctx.failedCount > 0 },
+  { text: "Which courses should I focus on?",                  show: (ctx) => ctx.hasData },
+  { text: "What is CGPA and how is it calculated?",             show: (ctx) => !ctx.hasData },
 ];
+
+const CHIP_COUNT = 6;
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+export function getSuggestedChips(ctx = {}) {
+  const eligible = CHIP_POOL.filter((c) => {
+    try { return c.show(ctx); } catch { return true; }
+  });
+  return shuffle(eligible).slice(0, CHIP_COUNT).map((c) => c.text);
+}
