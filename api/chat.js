@@ -146,9 +146,6 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed", code: "method_not_allowed" });
   }
 
-    // 👇 ADD THESE TWO LINES HERE REMOVE LATER
-  console.error("[DEBUG] origin header:", JSON.stringify(req.headers.origin));
-  console.error("[DEBUG] allowed list:", JSON.stringify(getAllowedOrigins()));
   // Reject cross-origin POSTs outright if origin is present and not allowed.
   // (Same-origin requests, curl, and server-to-server calls have no Origin header
   //  and can't be distinguished this way — that's what payload limits + rate
