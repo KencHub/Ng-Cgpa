@@ -14,14 +14,12 @@
 //   - Multi-semester consistent GPA figures pre-computed in JS.
 //     Model reads ready numbers — no arithmetic delegated to Groq.
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 
 import { generateId }                       from "../utils/idGenerator.js";
 import { matchQuery }                       from "../utils/queryMatcher.js";
 import { buildContext }                     from "../utils/responseRenderer.js";
-import { KNOWLEDGE_BASE, SUGGESTED_CHIPS } from "../data/knowledgeBase.js";
-
-export { SUGGESTED_CHIPS };
+import { KNOWLEDGE_BASE, getSuggestedChips } from "../data/knowledgeBase.js";
 
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -91,6 +89,7 @@ export function useChat({
   activePassmark,
   projection,
   projectionResult,
+  wes, // headline WES conversion result (from convertToWES), optional
 }) {
   // ── Load persisted chat on first render ──────────────────────────────────
   const { messages: savedMessages, history: savedHistory } = loadChatFromStorage();
@@ -176,6 +175,91 @@ export function useChat({
           .filter(c => Number(c.gradePoint) === 0 && Number(c.creditUnits) > 0)
           .map(c => `${c.name || "Unnamed"} (${c.creditUnits} units, ${s.label})`)
       );
+
+
+    // ── Full per-course grade record + distribution ─────────────────────────
+    // Precomputed here (not left to Groq) so questions like "how many Cs did
+    // I have" or "what is my lowest grade" are answered from real data, not
+    // approximated or refused. Letter is read from c.grade when present,
+    // otherwise resolved from c.gradePoint against the institution's grade table.
+
+    const gradeTable = inst?.gradeTable ?? [];
+
+    function letterFor(course) {
+      if (course.grade) return course.grade;
+      const gp = Number(course.gradePoint);
+      if (isNaN(gp)) return null;
+      const entry = gradeTable.find(g => g.point === gp);
+      return entry ? entry.letter : null;
+    }
+
+    const courseRecords = (semesters ?? [])
+      .flatMap(s =>
+        (s.courses ?? [])
+          .filter(c => Number(c.creditUnits) > 0 && (c.grade || c.gradePoint !== null && c.gradePoint !== undefined))
+          .map(c => ({
+            name:     c.name || "Unnamed course",
+            cu:       Number(c.creditUnits),
+            letter:   letterFor(c) ?? "N/A",
+            gp:       Number(c.gradePoint) || 0,
+            score:    c.score !== null && c.score !== undefined ? Number(c.score) : null,
+            qp:       Number(c.qualityPoint) || (Number(c.creditUnits) * (Number(c.gradePoint) || 0)),
+            semester: s.label,
+          }))
+      );
+
+    const gradeDistribution = courseRecords.reduce((acc, c) => {
+      acc[c.letter] = (acc[c.letter] || 0) + 1;
+      return acc;
+    }, {});
+
+    const distributionLine = Object.keys(gradeDistribution).length > 0
+      ? Object.entries(gradeDistribution)
+          .sort((a, b) => a[0].localeCompare(b[0]))
+          .map(([letter, count]) => `${letter}: ${count}`)
+          .join(" | ")
+      : "No graded courses yet";
+
+    const lowestGP = courseRecords.length > 0
+      ? Math.min(...courseRecords.map(c => c.gp))
+      : null;
+    const lowestGradeCourses = lowestGP !== null
+      ? courseRecords.filter(c => c.gp === lowestGP)
+          .map(c => `${c.name} (${c.letter}, ${c.cu} units, ${c.semester})`)
+      : [];
+
+    const highestGP = courseRecords.length > 0
+      ? Math.max(...courseRecords.map(c => c.gp))
+      : null;
+    const highestGradeCourses = highestGP !== null
+      ? courseRecords.filter(c => c.gp === highestGP)
+          .map(c => `${c.name} (${c.letter}, ${c.cu} units, ${c.semester})`)
+      : [];
+
+    const courseTableLines = courseRecords.length > 0
+      ? courseRecords.map(c =>
+          `${c.name} — ${c.cu} CU — Grade: ${c.letter}${c.score !== null ? ` (${c.score}%)` : ""} — ${c.semester}`
+        ).join("\n")
+      : "No courses entered yet";
+
+
+    // ── Retake priority order ────────────────────────────────────────────────
+    // Mirrors CarryoverRanker.jsx's ranking logic: since every failed course is
+    // evaluated against the same lowest non-zero grade point when barely passed,
+    // CGPA impact is proportional to credit units. Ranking by credit units
+    // descending reproduces the same order without re-deriving classifications.
+
+    const nonZeroPoints  = gradeTable.filter(g => g.point > 0).map(g => g.point);
+    const minPassPoint   = nonZeroPoints.length > 0 ? Math.min(...nonZeroPoints) : 1;
+
+    const retakePriority = (semesters ?? [])
+      .flatMap(s =>
+        (s.courses ?? [])
+          .filter(c => Number(c.gradePoint) === 0 && Number(c.creditUnits) > 0)
+          .map(c => ({ name: c.name || "Unnamed course", cu: Number(c.creditUnits), semester: s.label }))
+      )
+      .sort((a, b) => b.cu - a.cu)
+      .map((c, i) => `${i + 1}. ${c.name} (${c.cu} units, ${c.semester}) — barely passing this gains ~${(c.cu * minPassPoint)} QP`);
 
 
     // ── Borderline check ─────────────────────────────────────────────────────
@@ -281,6 +365,16 @@ Semester GPAs: ${semGPAs || "None yet"}
 Failed courses: ${failedCourses.length > 0 ? failedCourses.join(", ") : "None"}
 Borderline status: ${borderlineNote}
 
+GRADE DISTRIBUTION (count of every graded course, across all semesters): ${distributionLine}
+LOWEST GRADE ON RECORD: ${lowestGradeCourses.length > 0 ? lowestGradeCourses.join("; ") : "N/A"}
+HIGHEST GRADE ON RECORD: ${highestGradeCourses.length > 0 ? highestGradeCourses.join("; ") : "N/A"}
+
+FULL COURSE RECORD (every course, its credit units, grade, score if available, and semester):
+${courseTableLines}
+
+${retakePriority.length > 0 ? `RETAKE PRIORITY ORDER (ranked by CGPA impact, highest first):
+${retakePriority.join("\n")}` : ""}
+
 CLASSIFICATION BOUNDARIES AT ${inst?.name ?? "THIS UNIVERSITY"}:
 First Class:        ${firstMin} and above
 Second Upper (2:1): ${upperMin} and above
@@ -288,6 +382,15 @@ Second Lower (2:2): ${lowerMin} and above
 Third Class:        ${thirdMin} and above
 Scale maximum:      ${scaleMax} (no GPA or CGPA can exceed this number)
 
+${wes?.supported ? `WES (WORLD EDUCATION SERVICES) INTERNATIONAL EQUIVALENCY:
+Canadian equivalent grade: ${wes.canadianGrade}
+US GPA equivalent: ${wes.usGPA} (${wes.usGPANum} / 4.0)
+Nigerian range converted: ${wes.nigerianRange}
+${wes.admissionNote ? `Note: ${wes.admissionNote}` : ""}
+${wes.warning ? `Caveat: ${wes.warning}` : ""}
+This is a headline estimate only. If asked for a per-course WES breakdown, tell the student to check the WES Converter panel for that level of detail — you do not have individual course conversions.
+` : wes && wes.supported === false ? `WES CONVERSION: Not yet available. Reason: ${wes.reason}
+` : ""}
 ${hasData ? `REQUIRED GPA NEXT SEMESTER (assuming 18 credit units — most common load):
 To reach First Class (${firstMin}):  ${fmtReq(toFirst18)}
 To reach 2:1 (${upperMin}):          ${fmtReq(toUpper18)}
@@ -315,12 +418,32 @@ HOW TO RESPOND:
 - If the student has no data yet, ask them to enter their courses before you can give specific numbers.
 - Do not list scenarios for 15 CU, 18 CU, and 20 CU in the same response unless the student specifically asks about different credit loads.
 - Never use em-dashes. Use commas, colons, or periods instead.
+- Formatting: you may use **bold** for emphasis on key numbers or terms, and "- " at the start of a line for bullet lists. Do not use any other markdown (no #, no backticks, no tables, no numbered-list syntax like "1.").
+- WES QUESTIONS: If the student asks about their WES / international / Canadian / US equivalency and the WES block above is present, answer directly from it. If it says "Not yet available," tell them why (using the reason given) and point them to the WES Converter panel. Never invent WES numbers that are not in the block above.
+- COURSE-LEVEL QUESTIONS: For questions like "how many Cs did I have," "which course is my lowest/highest grade," "what did I score in X," "list my grades," or anything about a specific course's grade or score, answer using the GRADE DISTRIBUTION, LOWEST/HIGHEST GRADE ON RECORD, and FULL COURSE RECORD data above. Never say you don't have their course-level grades. If asked to list every course, you may share the full table; otherwise answer only the specific question asked.
+- RETAKE PRIORITY QUESTIONS: For "which course should I retake first" or "what should I focus on retaking," use the RETAKE PRIORITY ORDER list above directly rather than general advice. It is already ranked by CGPA impact.
 - LETTER AND DOCUMENT REQUESTS: When the student asks you to draft any letter, appeal, or petition, do the following. First, use their real data: actual university name, department, faculty, CGPA to 4 decimal places, and degree class. For matric number and academic session, use the real value if provided; bracket only what is genuinely missing, e.g. [Matric Number]. For the student name, use "[Your Name]" as the signature only if name is not provided; write the rest in first person. Second, build the letter argument around this student's specific situation. If their CGPA is borderline, the letter should acknowledge the gap and argue the case for review. If they are a strong performer with a consistent record, the letter should lead with that consistency and use the semester GPA trend as evidence. If they have failed courses, the letter should acknowledge setbacks and frame recovery. Do not open every letter with "I am writing to appeal" — vary the opening based on the purpose and tone of the request. The letter must feel written for this specific person, not assembled from a template with numbers plugged in.`;
     
   }, [
     institution, student, semesters, cgpa, degreeClass,
-    totals, activeScale, activeClassifications,
+    totals, activeScale, activeClassifications, wes,
   ]);
+
+
+  // ── Suggested chips (dynamic, reshuffled, data-aware) ────────────────────
+
+  const suggestedChips = useMemo(() => {
+    return getSuggestedChips({
+      hasData:      (totals?.totalCU ?? 0) > 0,
+      failedCount:  (semesters ?? []).flatMap(s =>
+                      (s.courses ?? []).filter(c =>
+                        Number(c.gradePoint) === 0 && Number(c.creditUnits) > 0)
+                    ).length,
+      isFirstClass: (degreeClassShort || "").toLowerCase().includes("first"),
+      degreeClass:  degreeClass || null,
+      hasWES:       !!wes?.supported,
+    });
+  }, [totals, semesters, degreeClassShort, degreeClass, wes]);
 
 
   // ── Build knowledge base context ───────────────────────────────────────────
@@ -488,6 +611,6 @@ HOW TO RESPOND:
     clearChat,
     dismissError,
     clearQACache:   () => {},
-    suggestedChips: SUGGESTED_CHIPS,
+    suggestedChips,
   };
 }
