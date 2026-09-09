@@ -337,6 +337,23 @@
   word-break: break-word;
 }
 
+.assistant-message__list {
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-relaxed);
+  color: var(--color-text-primary);
+  margin: 0;
+  padding-left: var(--space-4, 1.1em);
+  word-break: break-word;
+}
+
+.assistant-message__list-item {
+  margin-bottom: var(--space-1, 0.25em);
+}
+
+.assistant-message__list-item:last-child {
+  margin-bottom: 0;
+}
+
 /* Footer: time + KB note */
 .assistant-message__footer {
   display: flex;
