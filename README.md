@@ -33,4 +33,4 @@ Most CGPA calculators online are built around US or UK grading systems and don't
 
 ---
 
-Built by KenChub [ELUSK]
+Built by KenChub
