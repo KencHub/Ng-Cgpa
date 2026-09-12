@@ -28,7 +28,7 @@ export default function Footer({ onOpenContact }) {
         <div className="footer__right">
           <span className="footer__built">
             Built by{" "}
-            <span className="footer__author">KenChub [ELUSK]</span>
+            <span className="footer__author">KencHub [ELUSK]</span>
           </span>
           <span className="footer__separator" aria-hidden="true">·</span>
           <span className="footer__year" aria-label={`Copyright ${year}`}>
@@ -39,7 +39,7 @@ export default function Footer({ onOpenContact }) {
             className="footer__contact-btn"
             onClick={onOpenContact}
             type="button"
-            aria-label="Contact KenChub — report errors, suggest corrections, or get support"
+            aria-label="Contact KencHub — report errors, suggest corrections, or get support"
           >
             Contact
           </button>
